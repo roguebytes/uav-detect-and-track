@@ -1,0 +1,10 @@
+# Core (tracking pipeline + smoke test) — numpy only:
+numpy>=1.24
+
+# Full video demo:
+opencv-python>=4.8
+ultralytics>=8.2     # YOLO detector (also bundles ByteTrack/BoT-SORT if you prefer)
+pyyaml>=6.0
+
+# ROS 2 integration (install via your ROS 2 distro, NOT pip):
+#   rclpy, cv_bridge, sensor_msgs, geometry_msgs
