@@ -47,10 +47,10 @@ def make_grass(size: int, seed: int) -> np.ndarray:
     blades = blade_strokes(size, size * size // 40, rng)
     fine = rng.random((size, size), dtype=np.float32)  # per-pixel grain
 
-    lush = np.array([62, 122, 80], dtype=np.float32)  # BGR, muted green; the renderer darkens by about 25%
-    dry = np.array([84, 140, 126], dtype=np.float32)  # BGR, dry yellowed grass
+    lush = np.array([66, 124, 84], dtype=np.float32)  # BGR, muted green; the renderer darkens by about 25%
+    dry = np.array([78, 134, 108], dtype=np.float32)  # BGR, slightly drier grass (kept close to lush so tiles do not read as a checkerboard)
     base = lush[None, None, :] * (1 - patches[..., None]) + dry[None, None, :] * patches[..., None]
-    shade = 0.8 + 0.3 * clumps + 0.22 * blades + 0.18 * (fine - 0.5)
+    shade = 0.88 + 0.14 * clumps + 0.22 * blades + 0.18 * (fine - 0.5)
     img = base * shade[..., None]
     soil = tileable_noise(size, max(3, size // 800), rng) > 0.94   # sparse darker soil specks
     img[soil] *= 0.6

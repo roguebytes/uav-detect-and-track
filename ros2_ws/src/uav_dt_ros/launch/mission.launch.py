@@ -31,7 +31,13 @@ def setup(context, *a, **k):
                                 "dwell_s": float(L("dwell_s")), "max_verify": int(L("max_verify")),
                                 "image_w": 1008 if lite else 4032, "image_h": 756 if lite else 3024,
                                 "log_path": os.path.join(run_dir, "mission.jsonl")}])
-    return [perception, mission]
+    actions = [perception, mission]
+    if L("record") == "true":
+        from launch.actions import ExecuteProcess
+        actions.append(ExecuteProcess(cmd=["python3", os.path.join(root, "scripts", "record_video.py"), "--out-dir", run_dir,
+                                           "--fps", L("record_fps"), "/uav/chase", "/perception/annotated"],
+                                      output="screen", name="record_video"))
+    return actions
 
 
 def generate_launch_description():
@@ -50,5 +56,7 @@ def generate_launch_description():
         DeclareLaunchArgument("dwell_s", default_value="4"),
         DeclareLaunchArgument("max_verify", default_value="0", description="0 = verify every confirmed track"),
         DeclareLaunchArgument("run_name", default_value=""),
+        DeclareLaunchArgument("record", default_value="false", description="record chase and annotated video to the run dir"),
+        DeclareLaunchArgument("record_fps", default_value="15"),
         OpaqueFunction(function=setup),
     ])

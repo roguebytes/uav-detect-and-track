@@ -6,6 +6,7 @@
 #   scripts/smoke.sh                 # sparse world, 2 verifications
 #   MAX_VERIFY=0 scripts/smoke.sh    # verify every track (slower)
 #   DETECTOR=yolo POSE=mavros scripts/smoke.sh   # real detector on the full-resolution camera (needs GPU + weights)
+#   RECORD=true scripts/smoke.sh     # also write chase-camera and annotated MP4s into the run dir
 set -o pipefail   # no -u: the ROS setup scripts reference unset variables
 cd "$(dirname "$0")/.."
 source scripts/env.sh
@@ -26,6 +27,8 @@ LOGDIR="runs/$RUN"; mkdir -p "$LOGDIR"
 
 cleanup() {
   echo "smoke: cleaning up"
+  # stop the recorder first and give ffmpeg time to flush before anything else goes down
+  for p in $(pgrep -f 'scripts/record_video.py' 2>/dev/null); do kill -INT "$p" 2>/dev/null; done; sleep 3
   [ -n "${MP:-}" ] && kill -INT "$MP" 2>/dev/null
   [ -n "${LP:-}" ] && kill -INT "$LP" 2>/dev/null
   sleep 5
@@ -45,7 +48,7 @@ echo "smoke: MAVROS connected after ${i}s"; sleep 5
 
 echo "smoke: starting perception ($DETECTOR, pose from $POSE) and mission (max_verify=$MAX_VERIFY)"
 ros2 launch uav_dt_ros mission.launch.py world:="$WORLD" model:="$MODEL" detector:="$DETECTOR" pose_source:="$POSE" \
-  max_verify:="$MAX_VERIFY" dwell_s:="$DWELL" run_name:="$RUN" > "$LOGDIR/mission.log" 2>&1 &
+  max_verify:="$MAX_VERIFY" dwell_s:="$DWELL" run_name:="$RUN" record:="${RECORD:-false}" > "$LOGDIR/mission.log" 2>&1 &
 MP=$!
 T0=$(date +%s)
 while [ $(( $(date +%s) - T0 )) -lt "$TIMEOUT_S" ]; do
