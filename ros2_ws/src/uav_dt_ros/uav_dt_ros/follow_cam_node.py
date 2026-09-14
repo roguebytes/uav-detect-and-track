@@ -24,7 +24,7 @@ class FollowCamNode(Node):
     def __init__(self):
         super().__init__("follow_cam")
         self.declare_parameters("", [("world", "bowl_field_sparse"), ("entity", "follow_cam"), ("odom_topic", "/uav/gz_odom"),
-                                     ("distance", 10.0), ("height", 4.0), ("pitch_deg", 22.0), ("rate_hz", 10.0),
+                                     ("distance", 7.0), ("height", 3.0), ("pitch_deg", 20.0), ("rate_hz", 10.0),
                                      ("yaw_smoothing", 0.15)])
         g = lambda n: self.get_parameter(n).value  # noqa: E731
         self.entity, self.d, self.h = g("entity"), float(g("distance")), float(g("height"))
