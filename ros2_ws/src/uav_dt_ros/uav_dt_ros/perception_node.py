@@ -5,10 +5,12 @@ Publishes
   ~/tracks       vision_msgs/Detection3DArray   confirmed tracks in the local ENU frame ("map");
                                                 detection id is the track id, hypothesis score the best confidence
   ~/annotated    sensor_msgs/Image              quarter-resolution frame with boxes and track ids
+  ~/ground_points std_msgs/String               JSON list of [x, y] ground points for the current frame
+Subscribes /mission/verdicts (JSON {track_id: bool}) and records the verdict on each track for scoring.
 Logs every frame to a JSONL file for scripts/score.py.
 
 Pose source: 'mavros' uses /mavros/local_position/pose (what a real aircraft has),
-'gz' uses the Gazebo ground-truth pose bridged on /uav/gz_poses (CI, and for isolating
+'gz' uses the Gazebo ground-truth model odometry bridged on /uav/gz_odom (CI, and for isolating
 perception error from estimator error).
 """
 from __future__ import annotations
@@ -23,10 +25,11 @@ import numpy as np
 import rclpy
 from cv_bridge import CvBridge
 from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
+from std_msgs.msg import String
 from sensor_msgs.msg import CameraInfo, Image
-from tf2_msgs.msg import TFMessage
 from vision_msgs.msg import (BoundingBox2D, Detection2D, Detection2DArray, Detection3D, Detection3DArray,
                              ObjectHypothesisWithPose)
 
@@ -43,8 +46,7 @@ class PerceptionNode(Node):
             ("image_topic", "/uav/camera"),
             ("camera_info_topic", "/uav/camera_info"),
             ("pose_source", "gz"),                 # gz | mavros
-            ("gz_pose_topic", "/uav/gz_poses"),
-            ("gz_model_name", "x500_nadir_cam"),
+            ("gz_odom_topic", "/uav/gz_odom"),
             ("mavros_pose_topic", "/mavros/local_position/pose"),
             ("detector", "gt"),                    # gt | yolo
             ("weights", "models/scratch_best.pt"),
@@ -77,12 +79,16 @@ class PerceptionNode(Node):
         self.create_subscription(CameraInfo, g("camera_info_topic"), self.on_camera_info, qos)
         self.create_subscription(Image, g("image_topic"), self.on_image, qos)
         if g("pose_source") == "gz":
-            self.create_subscription(TFMessage, g("gz_pose_topic"), self.on_gz_poses, qos)
+            self.create_subscription(Odometry, g("gz_odom_topic"), self.on_odom, qos)
+            self.get_logger().info(f"pose from Gazebo odometry {g('gz_odom_topic')}")
         else:
             self.create_subscription(PoseStamped, g("mavros_pose_topic"), self.on_pose, qos)
+            self.get_logger().info(f"pose from {g('mavros_pose_topic')}")
         self.det_pub = self.create_publisher(Detection2DArray, "~/detections", 10)
         self.track_pub = self.create_publisher(Detection3DArray, "~/tracks", 10)
         self.img_pub = self.create_publisher(Image, "~/annotated", qos)
+        self.gp_pub = self.create_publisher(String, "~/ground_points", 10)   # JSON [[x, y], ...] per frame, for the verify dwell
+        self.create_subscription(String, "/mission/verdicts", self.on_verdicts, 10)
 
     # ---- inputs -------------------------------------------------------------------------------
     def on_camera_info(self, msg: CameraInfo):
@@ -94,13 +100,15 @@ class PerceptionNode(Node):
         self.get_logger().info(f"camera {msg.width}x{msg.height} hfov {math.degrees(hfov):.1f} deg")
         self._build_pipeline()
 
-    def on_gz_poses(self, msg: TFMessage):
-        name = self.get_parameter("gz_model_name").value
-        for tf in msg.transforms:
-            if tf.child_frame_id == name:
-                tr, q = tf.transform.translation, tf.transform.rotation
-                self.pose = ((tr.x, tr.y, tr.z), (q.x, q.y, q.z, q.w), self.get_clock().now().nanoseconds * 1e-9)
-                return
+    def on_odom(self, msg: Odometry):
+        p, q = msg.pose.pose.position, msg.pose.pose.orientation
+        self.pose = ((p.x, p.y, p.z), (q.x, q.y, q.z, q.w), msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9)
+
+    def on_verdicts(self, msg: String):
+        for tid, ok in json.loads(msg.data).items():
+            tr = self.pipeline.tracker.get(int(tid)) if self.pipeline else None
+            if tr is not None:
+                tr.verified = bool(ok)
 
     def on_pose(self, msg: PoseStamped):
         p, q = msg.pose.position, msg.pose.orientation
@@ -149,6 +157,7 @@ class PerceptionNode(Node):
             det.results.append(hyp)
             d2.detections.append(det)
         self.det_pub.publish(d2)
+        self.gp_pub.publish(String(data=json.dumps([[round(g[0], 3), round(g[1], 3)] for g in res.ground_points if g is not None])))
 
         d3 = Detection3DArray(header=header)
         d3.header.frame_id = "map"

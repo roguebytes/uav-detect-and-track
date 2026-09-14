@@ -51,6 +51,13 @@
       </sensor>
       <gravity>true</gravity>
     </link>
+    <!-- Ground-truth pose in the world frame on /model/x500_nadir_cam_lite/odometry (gz.msgs.Odometry), for scoring and CI. -->
+    <plugin filename="gz-sim-odometry-publisher-system" name="gz::sim::systems::OdometryPublisher">
+      <odom_frame>map</odom_frame>
+      <robot_base_frame>base_link</robot_base_frame>
+      <odom_publish_frequency>50</odom_publish_frequency>
+      <dimensions>3</dimensions>
+    </plugin>
     <joint name="survey_cam_joint" type="fixed">
       <parent>base_link</parent>
       <child>survey_cam/base_link</child>

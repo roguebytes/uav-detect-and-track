@@ -1,5 +1,5 @@
 """Start the simulation stack: Gazebo (our world), the x500 with the nadir survey camera,
-PX4 SITL attached to that model, MAVROS, and the ros_gz bridges for the camera and clock.
+PX4 SITL attached to that model, MAVROS, the ros_gz bridges for the camera, clock and the ground-truth model odometry (/uav/gz_odom).
 
     ros2 launch uav_dt_ros sim.launch.py world:=bowl_field_sparse headless:=true
 
@@ -63,9 +63,9 @@ def setup(context, *args, **kwargs):
                       "/uav/camera@sensor_msgs/msg/Image[gz.msgs.Image",
                       "/uav/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo",
                       "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
-                      f"/world/{world}/dynamic_pose/info@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V",
+                      f"/model/{model}/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry",
                   ],
-                  remappings=[(f"/world/{world}/dynamic_pose/info", "/uav/gz_poses")])
+                  remappings=[(f"/model/{model}/odometry", "/uav/gz_odom")])
 
     mavros = Node(package="mavros", executable="mavros_node", name="mavros", output="screen",
                   parameters=[{"fcu_url": "udp://:14540@127.0.0.1:14580", "gcs_url": "", "tgt_system": 1, "tgt_component": 1,
