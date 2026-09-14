@@ -14,19 +14,39 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import sys
 
 
-def load_log(path):
+def load_log(path, survey_end=None):
+    """Frames and the final state of each track.
+
+    survey_end: time at which the survey finished (from mission.jsonl). Tracks first confirmed
+    after it were spawned during the low pass and are not survey results; they are dropped. The
+    verdict recorded later on a surviving track is kept."""
     frames = [json.loads(line) for line in open(path) if line.strip()]
     if not frames:
         sys.exit(f"no frames in {path}")
-    # final state of every track id (position converges as observations accumulate)
-    tracks = {}
+    tracks, first_seen = {}, {}
     for fr in frames:
         for tr in fr["tracks"]:
+            first_seen.setdefault(tr["id"], fr["t"])
             tracks[tr["id"]] = tr
+    if survey_end is not None:
+        tracks = {k: v for k, v in tracks.items() if first_seen[k] <= survey_end}
     return frames, list(tracks.values())
+
+
+def survey_end_from_mission(path):
+    """Time the mission left the SURVEY state, or None if the mission log is missing."""
+    try:
+        for line in open(path):
+            rec = json.loads(line)
+            if rec.get("state") == "verify":
+                return rec["t"]
+    except FileNotFoundError:
+        return None
+    return None
 
 
 def greedy_match(tracks, bowls, radius):
@@ -45,6 +65,7 @@ def greedy_match(tracks, bowls, radius):
 
 def score(frames, tracks, bowls, survey_radius, verify_radius):
     out = {"bowls": len(bowls), "frames": len(frames), "mission_time_s": frames[-1]["t"] - frames[0]["t"]}
+    # a track's log time is the image time; mission.jsonl times are ROS clock, same sim clock
     survey = greedy_match(tracks, bowls, survey_radius)
     out["survey"] = {
         "tracks": len(tracks), "tp": len(survey), "fp": len(tracks) - len(survey), "fn": len(bowls) - len(survey),
@@ -99,8 +120,11 @@ def main():
     ap.add_argument("--verify-radius", type=float, default=0.75)
     ap.add_argument("--markdown", help="write a results table to this file")
     ap.add_argument("--min-recall", type=float, default=None, help="exit 1 if survey recall is below this")
+    ap.add_argument("--mission-log", default=None, help="mission.jsonl next to the perception log (default: auto)")
     a = ap.parse_args()
-    frames, tracks = load_log(a.log)
+    mission_log = a.mission_log or os.path.join(os.path.dirname(a.log), "mission.jsonl")
+    survey_end = survey_end_from_mission(mission_log)
+    frames, tracks = load_log(a.log, survey_end)
     manifest = json.load(open(a.manifest))
     res = score(frames, tracks, manifest["bowls"], a.survey_radius, a.verify_radius)
     print(json.dumps(res, indent=2))

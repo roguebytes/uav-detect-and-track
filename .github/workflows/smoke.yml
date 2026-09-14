@@ -1,0 +1,47 @@
+name: headless smoke run
+
+# The image build takes about 40 minutes (PX4 and ros_gz from source), so it is cached in GHCR and
+# only rebuilt when the toolchain inputs change. The smoke run itself takes a few minutes on the
+# CPU renderer with the lite camera and the oracle detector, no weights needed.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build (cached) image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ci/Dockerfile
+          load: true
+          tags: uav-dt-smoke:ci
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}/smoke-cache
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}/smoke-cache,mode=max
+      - name: Unit tests and offline smoke
+        run: docker run --rm uav-dt-smoke:ci bash -lc "source scripts/env.sh && python -m pytest && python smoke_test.py"
+      - name: Headless sim smoke run
+        run: docker run --rm -v ${{ github.workspace }}/runs:/repo/runs uav-dt-smoke:ci
+      - name: Upload run logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-run
+          path: runs/**/*.md
+          if-no-files-found: ignore
