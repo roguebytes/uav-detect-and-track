@@ -20,12 +20,23 @@ def setup(context, *a, **k):
     os.makedirs(run_dir, exist_ok=True)
     manifest = os.path.join(root, "sim", "worlds", L("world") + ".json")
     lite = L("model").endswith("_lite")
-    perception = Node(package="uav_dt_ros", executable="perception_node", name="perception", output="screen",
-                      parameters=[{"detector": L("detector"), "pose_source": L("pose_source"),
-                                   "weights": os.path.join(root, "models", "scratch_best.pt"),
-                                   "world_manifest": manifest, "log_path": os.path.join(run_dir, "perception.jsonl"),
-                                   "device": L("device"), "half": L("half") == "true", "conf": float(L("conf")),
-                                   "gt_miss_rate": float(L("gt_miss_rate"))}])
+    perception_params = {"detector": L("detector"), "pose_source": L("pose_source"),
+                         "weights": os.path.join(root, "models", "scratch_best.pt"),
+                         "world_manifest": manifest, "log_path": os.path.join(run_dir, "perception.jsonl"),
+                         "device": L("device"), "half": L("half") == "true", "conf": float(L("conf")),
+                         "gt_miss_rate": float(L("gt_miss_rate"))}
+    venv_python = os.environ.get("UAV_DT_PYTHON")
+    if venv_python and os.path.exists(venv_python):
+        # torch and ultralytics live in the repo venv; ros2 entry points use the system interpreter
+        from launch.actions import ExecuteProcess
+        ros_args = ["--ros-args", "-r", "__node:=perception"]
+        for k, v in perception_params.items():
+            ros_args += ["-p", f"{k}:={str(v).lower() if isinstance(v, bool) else v}"]
+        perception = ExecuteProcess(cmd=[venv_python, "-m", "uav_dt_ros.perception_node", *ros_args],
+                                    output="screen", name="perception")
+    else:
+        perception = Node(package="uav_dt_ros", executable="perception_node", name="perception", output="screen",
+                          parameters=[perception_params])
     mission = Node(package="uav_dt_ros", executable="mission_node", name="mission", output="screen",
                    parameters=[{"field_w": float(L("field_w")), "field_h": float(L("field_h")),
                                 "survey_alt": float(L("survey_alt")), "verify_alt": float(L("verify_alt")),

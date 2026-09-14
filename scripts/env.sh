@@ -19,7 +19,10 @@ export GZ_SIM_RESOURCE_PATH="$_repo/sim/models:$_repo/sim/worlds:$PX4_DIR/Tools/
 # PX4 1.15 looks for PX4_GZ_WORLD in this directory.
 export PX4_GZ_WORLDS="$_repo/sim/worlds"
 
-# Python venv with torch and ultralytics (created by scripts/setup.sh).
+# Python venv with torch and ultralytics (created by scripts/setup.sh). ROS launches nodes with the
+# system interpreter, so mission.launch.py runs the perception node with UAV_DT_PYTHON instead.
 [ -f "$_repo/.venv/bin/activate" ] && source "$_repo/.venv/bin/activate"
+export UAV_DT_PYTHON="${UAV_DT_PYTHON:-$_repo/.venv/bin/python}"
+export UAV_DT_REPO="$_repo"
 export PYTHONPATH="$_repo${PYTHONPATH:+:$PYTHONPATH}"
 unset _repo

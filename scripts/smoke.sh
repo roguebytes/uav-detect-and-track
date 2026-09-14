@@ -10,11 +10,10 @@
 set -o pipefail   # no -u: the ROS setup scripts reference unset variables
 cd "$(dirname "$0")/.."
 source scripts/env.sh
-deactivate 2>/dev/null || true            # ROS nodes run on the system Python
+deactivate 2>/dev/null || true            # ros2 CLI on the system Python; the perception node uses UAV_DT_PYTHON
 [ -f ros2_ws/install/setup.bash ] || (cd ros2_ws && colcon build --symlink-install >/dev/null)
 [ -x build/gz_set_pose/gz_set_pose ] || scripts/build_tools.sh
 source ros2_ws/install/setup.bash
-export UAV_DT_REPO="$PWD"
 
 WORLD="${WORLD:-bowl_field_sparse}"
 DETECTOR="${DETECTOR:-gt}"
