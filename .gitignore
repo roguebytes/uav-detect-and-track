@@ -5,6 +5,7 @@ venv/
 *.egg-info/
 
 # Models, data, outputs
+models/
 *.pt
 *.onnx
 *.engine
