@@ -31,6 +31,8 @@ def setup(context, *a, **k):
         from launch.actions import ExecuteProcess
         ros_args = ["--ros-args", "-r", "__node:=perception"]
         for k, v in perception_params.items():
+            if v == "":
+                continue                      # rcl cannot parse an empty override; the node default applies
             ros_args += ["-p", f"{k}:={str(v).lower() if isinstance(v, bool) else v}"]
         perception = ExecuteProcess(cmd=[venv_python, "-m", "uav_dt_ros.perception_node", *ros_args],
                                     output="screen", name="perception")
