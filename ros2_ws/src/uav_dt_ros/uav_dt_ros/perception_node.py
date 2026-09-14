@@ -60,6 +60,7 @@ class PerceptionNode(Node):
             ("gt_miss_rate", 0.05),
             ("gt_pixel_noise", 1.0),
             ("ground_z", 0.0),
+            ("min_height_agl", 5.0),               # ignore frames below this: on the ground the nadir camera sees nothing useful
             ("gate_m", 1.5),
             ("log_path", "runs/perception.jsonl"),
             ("publish_annotated", True),
@@ -166,6 +167,8 @@ class PerceptionNode(Node):
             return
         t = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
         position, orientation = self.pose_at(t)
+        if position is None or position[2] - float(self.get_parameter("ground_z").value) < float(self.get_parameter("min_height_agl").value):
+            return
         frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
         res = self.pipeline.process(frame, t, position, orientation)
         self.frames += 1
