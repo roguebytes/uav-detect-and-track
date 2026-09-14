@@ -5,7 +5,9 @@ venv/
 *.egg-info/
 
 # Models, data, outputs
-/models/
+/models/*
+!/models/README.md
+!/models/scratch_best.pt.sha256
 *.pt
 *.onnx
 *.engine
