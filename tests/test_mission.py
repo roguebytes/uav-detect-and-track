@@ -41,6 +41,8 @@ def test_full_sequence_with_two_tracks():
     tracks = [(1, 5.0, 1.0), (2, -8.0, 4.0)]
 
     def obs(mission):   # bowl 1 is really there, bowl 2 is not
+        if mission.current is None or mission.dwell_until is None:
+            return ()
         tid, x, y = mission.current
         return [(x + 0.1, y - 0.1)] if tid == 1 else [(x + 5.0, y)]
 
@@ -49,9 +51,10 @@ def test_full_sequence_with_two_tracks():
     assert m.verdicts == {1: True, 2: False}
     gotos = [c for c in ctl.calls if c[0] == "goto"]
     assert gotos[:4] == [("goto", -10, 0, 40), ("goto", 10, 0, 40), ("goto", 10, 5, 40), ("goto", -10, 5, 40)]
-    # verify order is nearest-neighbour from the last waypoint (-10, 5): track 2 first
-    assert gotos[4:6] == [("goto", -8.0, 4.0, 40), ("goto", -8.0, 4.0, 11)]
-    assert gotos[-1] == ("goto", 0.0, 0.0, 40) and ctl.calls[-1] == ("land",)
+    # verify order is nearest-neighbour from the last waypoint (-10, 5): track 2 first, one descent,
+    # then track 1 at the verify altitude, then home at the verify altitude
+    assert gotos[4:] == [("goto", -8.0, 4.0, 40), ("goto", -8.0, 4.0, 11), ("goto", 5.0, 1.0, 11), ("goto", 0.0, 0.0, 11)]
+    assert ctl.calls[-1] == ("land",)
 
 
 def test_no_tracks_goes_straight_home():

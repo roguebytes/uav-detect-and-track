@@ -32,9 +32,9 @@ class SurveyVerifyMission:
         self.strategy, self.wp_tol, self.verify_radius, self.verify_ratio = strategy, wp_tol, verify_radius, verify_ratio
         self.max_verify, self.home, self.settle_s = max_verify, home, settle_s
         self.state, self.wp_index = State.INIT, 0
-        self.queue: list = []                  # verify targets: (id, x, y)
-        self.steps: list = []                  # remaining steps for the current target
-        self.current = None                    # (id, x, y) being verified
+        self.targets: list = []                # verify targets in visiting order: (id, x, y)
+        self.steps: list = []                  # remaining steps of the low-altitude pass
+        self.current = None                    # (id, x, y) whose dwell is running
         self.dwell_until, self.dwell_frames, self.dwell_hits = None, 0, 0
         self.verdicts: dict[int, bool] = {}
         self.transitions: list[tuple[float, str]] = []
@@ -82,9 +82,10 @@ class SurveyVerifyMission:
                 if self.wp_index < len(self.waypoints):
                     self._goto_wp()
                 else:
-                    self.queue = self._plan_verify(tracks)
+                    self.targets = self._plan_verify(tracks)
+                    self.steps = self.strategy.plan(self.targets, self.survey_alt, self.verify_alt) if self.targets else []
                     self._set(State.VERIFY, now)
-                    self._next_target(now)
+                    self._next_step(now)
         elif self.state is State.VERIFY:
             self._verify_tick(now, observations)
         elif self.state is State.RETURN:
@@ -99,20 +100,14 @@ class SurveyVerifyMission:
         self.ctl.goto(x, y, z, yaw)
         self._reached_since = None
 
-    def _next_target(self, now: float):
-        if not self.queue:
-            self.ctl.goto(self.home[0], self.home[1], self.survey_alt)
-            self._reached_since = None
-            self._set(State.RETURN, now)
-            return
-        self.current = self.queue.pop(0)
-        _, x, y = self.current
-        self.steps = self.strategy.steps(x, y, self.survey_alt, self.verify_alt)
-        self._next_step(now)
-
     def _next_step(self, now: float):
         if not self.steps:
-            self._next_target(now)
+            # pass complete: fly home at the current altitude and land
+            pos = self.ctl.position()
+            alt = pos[2] if pos is not None and self.targets else self.survey_alt
+            self.ctl.goto(self.home[0], self.home[1], max(alt, self.verify_alt))
+            self._reached_since = None
+            self._set(State.RETURN, now)
             return
         step = self.steps.pop(0)
         if step[0] == "goto":
@@ -120,7 +115,9 @@ class SurveyVerifyMission:
             self.ctl.goto(x, y, z, yaw)
             self._reached_since = None
         elif step[0] == "dwell":
-            self.dwell_until = now + step[1]
+            _, seconds, tid = step
+            self.current = next(t for t in self.targets if t[0] == tid)
+            self.dwell_until = now + seconds
             self.dwell_frames = self.dwell_hits = 0
             self._last_frame_key = None
 
