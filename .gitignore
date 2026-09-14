@@ -5,7 +5,7 @@ venv/
 *.egg-info/
 
 # Models, data, outputs
-models/
+/models/
 *.pt
 *.onnx
 *.engine
@@ -19,3 +19,16 @@ docs/*.mp4
 .idea/
 .vscode/
 
+
+# Generated grass texture (4096 px, about 12 MB). scripts/setup.sh regenerates it.
+sim/models/grass_ground/grass.png
+
+# stray run outputs
+frames/
+*.log
+
+# ROS 2 workspace build outputs
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+runs/

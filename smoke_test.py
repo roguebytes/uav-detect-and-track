@@ -1,55 +1,59 @@
-"""Offline end-to-end smoke test — numpy only, no model/weights/network.
+"""Offline end-to-end smoke test: numpy only, no weights, no ROS, no Gazebo.
 
-Drives the pipeline with a StubDetector that scripts an object moving left->right
-(plus a second object appearing later) and asserts the tracker produces stable IDs
-and a target offset that crosses image centre.
+Flies a synthetic 40 m lawnmower over a few bowls with the ground-truth oracle detector, then
+checks that the pipeline geolocates each bowl to within the tracker gate and that track IDs stay
+stable across passes.
 
     python smoke_test.py
 """
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
-from uav_dt.detector import StubDetector
-from uav_dt.pipeline import Pipeline
-from uav_dt.tracker import ByteTrackLite
+from uav_dt.detector import GroundTruthDetector
+from uav_dt.geolocate import CameraModel
+from uav_dt.geotracker import GeoTracker
+from uav_dt.pipeline import GeoPipeline
 
-W, H, N = 640, 480, 16
+BOWLS = [(-20.0, 10.0), (5.0, -3.0), (18.0, 12.0), (-2.0, -14.0)]
 
 
-def make_script():
-    frames = []
-    for k in range(N):
-        dets = []
-        cx = 100 + 440 * k / (N - 1)            # primary object: 100 -> 540 px
-        dets.append([cx - 30, 240 - 30, cx + 30, 240 + 30, 0.9, 0])
-        if k >= 8:                               # second object appears top-left
-            bx = 120 + (k - 8) * 5
-            dets.append([bx - 25, 100 - 25, bx + 25, 100 + 25, 0.8, 2])
-        frames.append(np.array(dets, dtype=np.float32))
-    return frames
+def lawnmower(x0, x1, y0, y1, spacing, step):
+    """Yield (x, y, yaw) along east-west legs."""
+    y, leg = y0, 0
+    while y <= y1:
+        xs = np.arange(x0, x1 + 1e-6, step) if leg % 2 == 0 else np.arange(x1, x0 - 1e-6, -step)
+        for x in xs:
+            yield float(x), float(y), 0.0 if leg % 2 == 0 else math.pi
+        y += spacing
+        leg += 1
 
 
 def main():
-    pipe = Pipeline(StubDetector(make_script()), ByteTrackLite(min_hits=3, max_age=30))
-    frame = np.zeros((H, W, 3), dtype=np.float32)
-    results = [pipe.process(frame, k, (H, W)) for k in range(N)]
-
-    targeted = [r for r in results if r["target"] is not None]
-    assert targeted, "no target ever selected"
-
-    ids = [r["target"]["id"] for r in targeted]
-    assert len(set(ids[:5])) == 1, f"primary target id not stable: {ids[:5]}"
-
-    first_x = targeted[0]["target"]["offset"][0]
-    last_x = targeted[-1]["target"]["offset"][0]
-    assert first_x < 0 < last_x, f"target offset did not cross centre: {first_x} -> {last_x}"
-
-    all_ids = {t["id"] for r in results for t in r["tracks"]}
-    assert len(all_ids) >= 2, f"expected >=2 distinct track ids, got {all_ids}"
-
-    print(f"frames={len(results)} targets={len(targeted)} ids={sorted(all_ids)} "
-          f"offset_x {first_x:+.2f} -> {last_x:+.2f}")
+    cam = CameraModel.dji_mini4pro_still()
+    det = GroundTruthDetector(cam, BOWLS, pixel_noise=1.0, miss_rate=0.1, false_positives=0, seed=3)
+    pipe = GeoPipeline(det, cam, GeoTracker(gate_m=1.5))
+    frame = np.zeros((cam.height, cam.width, 3), dtype=np.uint8)   # oracle ignores pixels
+    swath = 2 * 40.0 * math.tan(cam.hfov / 2) * 0.7                  # 30% side overlap
+    t, n_frames = 0.0, 0
+    for x, y, yaw in lawnmower(-40, 40, -25, 25, swath, 5.0):
+        q = (0.0, 0.0, math.sin(yaw / 2), math.cos(yaw / 2))
+        pipe.process(frame, t, (x, y, 40.0), q)
+        t += 1.0
+        n_frames += 1
+    tracks = pipe.tracker.confirmed()
+    assert len(tracks) == len(BOWLS), f"expected {len(BOWLS)} confirmed tracks, got {len(tracks)}"
+    errs = []
+    for bx, by in BOWLS:
+        d, tr = min((math.hypot(tr.x - bx, tr.y - by), tr) for tr in tracks)
+        assert d < 0.5, f"bowl at ({bx},{by}) geolocated {d:.2f} m off"
+        errs.append(d)
+    ids = sorted(tr.id for tr in tracks)
+    assert ids == list(range(1, len(BOWLS) + 1)), f"track ids not contiguous: {ids}"
+    print(f"frames={n_frames} tracks={len(tracks)} mean geolocation error={np.mean(errs):.3f} m "
+          f"max={max(errs):.3f} m hits={[tr.hits for tr in tracks]}")
     print("SMOKE TEST PASSED")
 
 

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sdf version='1.9'>
+  <!-- LITE VARIANT: quarter-resolution camera for the CI smoke run on software rendering. Same FOV, so the ground-truth detector sees the same footprint.
+
+    PX4 x500 quad (from the PX4 gz models, found via GZ_SIM_RESOURCE_PATH) plus a survey camera
+    looking straight down. Camera geometry approximates a DJI Mini 4 Pro 4:3 still: 4032x3024 px,
+    70 deg horizontal FOV. Update rate is low on purpose: one 12 MP frame per second is plenty at
+    5 m/s survey speed and keeps the render load sane.
+
+    Sensor frame convention (Gazebo): the camera looks along +X of the sensor pose. A pitch of
+    +pi/2 points +X at the ground. With that pose, image right is world -Y (left of the body) and
+    image down is world -X (behind the body) when the vehicle has zero yaw. The geolocation code
+    in uav_dt/geolocate.py encodes exactly this convention and is unit-tested against it.
+  -->
+  <model name='x500_nadir_cam_lite'>
+    <include merge='true'>
+      <uri>x500</uri>
+    </include>
+    <link name="survey_cam/base_link">
+      <pose relative_to="base_link">0.0 0.0 -0.05 0 1.5707963 0</pose>
+      <inertial>
+        <mass>0.050</mass>
+        <inertia>
+          <ixx>0.00004</ixx><ixy>0</ixy><ixz>0</ixz>
+          <iyy>0.00004</iyy><iyz>0</iyz>
+          <izz>0.00004</izz>
+        </inertia>
+      </inertial>
+      <visual name="body">
+        <geometry><box><size>0.03 0.03 0.03</size></box></geometry>
+        <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.1 0.1 0.1 1</diffuse></material>
+      </visual>
+      <sensor name="survey_cam" type="camera">
+        <pose>0 0 0 0 0 0</pose>
+        <camera>
+          <horizontal_fov>1.2217305</horizontal_fov>
+          <image>
+            <width>1008</width>
+            <height>756</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.5</near>
+            <far>500</far>
+          </clip>
+        </camera>
+        <always_on>1</always_on>
+        <update_rate>2</update_rate>
+        <visualize>false</visualize>
+        <topic>/uav/camera</topic>
+      </sensor>
+      <gravity>true</gravity>
+    </link>
+    <joint name="survey_cam_joint" type="fixed">
+      <parent>base_link</parent>
+      <child>survey_cam/base_link</child>
+    </joint>
+  </model>
+</sdf>

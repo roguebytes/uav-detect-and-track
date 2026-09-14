@@ -1,0 +1,14 @@
+# Keep MAVROS light: only the plugins the mission controller uses.
+/mavros:
+  ros__parameters:
+    plugin_allowlist:
+      - sys_status
+      - sys_time
+      - command
+      - local_position
+      - global_position
+      - setpoint_position
+      - setpoint_raw
+      - imu
+      - home_position
+      - param

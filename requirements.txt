@@ -1,10 +1,10 @@
-# Core (tracking pipeline + smoke test) — numpy only:
-numpy>=1.24
-
-# Full video demo:
-opencv-python>=4.8
-ultralytics>=8.2     # YOLO detector (also bundles ByteTrack/BoT-SORT if you prefer)
-pyyaml>=6.0
-
-# ROS 2 integration (install via your ROS 2 distro, NOT pip):
-#   rclpy, cv_bridge, sensor_msgs, geometry_msgs
+# Python deps for the perception and mission code (install into .venv, see scripts/setup.sh).
+# ROS 2 packages (rclpy, cv_bridge, sensor_msgs, vision_msgs, mavros) come from apt, not pip.
+numpy>=1.26,<3
+opencv-python-headless>=4.8
+ultralytics==8.4.150
+pymavlink>=2.4.41
+pytest>=8
+lark>=1.1      # keeps ROS 2 launch importable when pytest runs inside the venv
+# torch and torchvision: install the build matching your driver, e.g.
+#   pip install --index-url https://download.pytorch.org/whl/cu121 torch torchvision

@@ -1,0 +1,21 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <model name="grass_ground">
+    <static>true</static>
+    <link name="link">
+      <collision name="collision">
+        <geometry><plane><normal>0 0 1</normal><size>400 400</size></plane></geometry>
+        <surface><friction><ode><mu>100</mu><mu2>50</mu2></ode></friction></surface>
+      </collision>
+      <visual name="grass">
+        <cast_shadows>false</cast_shadows>
+        <geometry><mesh><uri>model://grass_ground/ground_400m.obj</uri></mesh></geometry>
+        <material>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+          <pbr><metal><albedo_map>model://grass_ground/grass.png</albedo_map><roughness>0.95</roughness></metal></pbr>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>

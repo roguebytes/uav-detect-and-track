@@ -1,0 +1,30 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <!-- White plastic bowl, 16 cm diameter, 5 cm tall, with a slightly darker inner disc so the rim reads at 11 m. -->
+  <model name="bowl">
+    <static>true</static>
+    <link name="link">
+      <visual name="body">
+        <pose>0 0 0.025 0 0 0</pose>
+        <geometry><cylinder><radius>0.08</radius><length>0.05</length></cylinder></geometry>
+        <material>
+          <ambient>0.85 0.85 0.85 1</ambient>
+          <diffuse>0.95 0.95 0.95 1</diffuse>
+          <specular>0.4 0.4 0.4 1</specular>
+        </material>
+      </visual>
+      <visual name="inner">
+        <pose>0 0 0.051 0 0 0</pose>
+        <geometry><cylinder><radius>0.065</radius><length>0.002</length></cylinder></geometry>
+        <material>
+          <ambient>0.6 0.6 0.6 1</ambient>
+          <diffuse>0.75 0.75 0.75 1</diffuse>
+        </material>
+      </visual>
+      <collision name="collision">
+        <pose>0 0 0.025 0 0 0</pose>
+        <geometry><cylinder><radius>0.08</radius><length>0.05</length></cylinder></geometry>
+      </collision>
+    </link>
+  </model>
+</sdf>
