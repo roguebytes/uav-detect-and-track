@@ -59,7 +59,7 @@ def setup(context, *args, **kwargs):
                         arguments=["-world", world, "-file", os.path.join(root, "sim", "models", follow_model, "model.sdf"),
                                    "-name", follow_model, "-x", "-10", "-z", "4"])
     follow = Node(package="uav_dt_ros", executable="follow_cam_node", name="follow_cam", output="screen",
-                  parameters=[{"world": world, "entity": follow_model}],
+                  parameters=[{"world": world, "entity": follow_model, "use_sim_time": True}],
                   additional_env={"UAV_DT_REPO": root})
 
     px4_env = dict(os.environ, PX4_GZ_STANDALONE="1", PX4_SIM_MODEL="gz_x500", PX4_GZ_MODEL_NAME=model,
@@ -80,7 +80,7 @@ def setup(context, *args, **kwargs):
     # them all "mavros" makes plugin topics collide. Dict parameters apply to every node via /**.
     mavros = Node(package="mavros", executable="mavros_node", output="screen",
                   parameters=[{"fcu_url": "udp://:14540@127.0.0.1:14580", "gcs_url": "", "tgt_system": 1, "tgt_component": 1,
-                               "fcu_protocol": "v2.0"},
+                               "fcu_protocol": "v2.0", "use_sim_time": True},   # stamps must match the camera's sim clock
                               os.path.join(root, "ros2_ws", "src", "uav_dt_ros", "config", "mavros_plugins.yaml")],
                   condition=IfCondition(LaunchConfiguration("mavros")))
 

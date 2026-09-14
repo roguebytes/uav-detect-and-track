@@ -130,6 +130,13 @@ class PerceptionNode(Node):
         h = self.pose_hist
         if not h:
             return None, None
+        if t < h[0][2] - 1.0 or t > h[-1][2] + 1.0:
+            # clocks disagree (for example wall-time stamps against a sim-time camera): use the latest pose
+            if not getattr(self, "_clock_warned", False):
+                self._clock_warned = True
+                self.get_logger().warn(f"image stamp {t:.1f} is outside the pose history [{h[0][2]:.1f}, {h[-1][2]:.1f}]; "
+                                       "using the latest pose. Check use_sim_time on the pose source.")
+            return h[-1][0], h[-1][1]
         if t <= h[0][2]:
             return h[0][0], h[0][1]
         if t >= h[-1][2]:

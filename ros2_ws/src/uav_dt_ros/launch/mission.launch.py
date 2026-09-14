@@ -24,7 +24,7 @@ def setup(context, *a, **k):
                          "weights": os.path.join(root, "models", "scratch_best.pt"),
                          "world_manifest": manifest, "log_path": os.path.join(run_dir, "perception.jsonl"),
                          "device": L("device"), "half": L("half") == "true", "conf": float(L("conf")),
-                         "gt_miss_rate": float(L("gt_miss_rate"))}
+                         "gt_miss_rate": float(L("gt_miss_rate")), "use_sim_time": True}
     venv_python = os.environ.get("UAV_DT_PYTHON")
     if venv_python and os.path.exists(venv_python):
         # torch and ultralytics live in the repo venv; ros2 entry points use the system interpreter
@@ -43,7 +43,7 @@ def setup(context, *a, **k):
                    parameters=[{"field_w": float(L("field_w")), "field_h": float(L("field_h")),
                                 "survey_alt": float(L("survey_alt")), "verify_alt": float(L("verify_alt")),
                                 "dwell_s": float(L("dwell_s")), "max_verify": int(L("max_verify")),
-                                "image_w": 1008 if lite else 4032, "image_h": 756 if lite else 3024,
+                                "image_w": 1008 if lite else 4032, "image_h": 756 if lite else 3024, "use_sim_time": True,
                                 "log_path": os.path.join(run_dir, "mission.jsonl")}])
     actions = [perception, mission]
     if L("record") == "true":
