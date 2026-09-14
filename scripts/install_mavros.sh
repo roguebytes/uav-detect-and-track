@@ -38,6 +38,6 @@ apt-get update
 apt-get install -y --only-upgrade ros-humble-diagnostic-updater ros-humble-diagnostic-msgs ros-humble-geographic-msgs \
   ros-humble-eigen-stl-containers ros-humble-tf2-eigen
 apt-get install -y --allow-downgrades ros-humble-mavros ros-humble-mavros-extras
-echo "shared-library check:"; ldd /opt/ros/humble/lib/mavros/mavros_node | grep 'not found' && { echo "mavros_node has unresolved libraries"; exit 1; } || echo "  all libraries resolve"
+echo "shared-library check:"; LD_LIBRARY_PATH=/opt/ros/humble/lib:/opt/ros/humble/lib/x86_64-linux-gnu ldd /opt/ros/humble/lib/mavros/mavros_node | grep 'not found' && { echo "mavros_node has unresolved libraries"; exit 1; } || echo "  all libraries resolve"
 bash /opt/ros/humble/lib/mavros/install_geographiclib_datasets.sh
 echo "MAVROS installed:"; dpkg -l | grep -E '^ii +ros-humble-(mavros|libmavconn|mavlink)' | awk '{print "  " $2, $3}'
