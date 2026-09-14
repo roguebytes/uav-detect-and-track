@@ -49,7 +49,7 @@ def setup(context, *a, **k):
     if L("record") == "true":
         from launch.actions import ExecuteProcess
         actions.append(ExecuteProcess(cmd=["python3", os.path.join(root, "scripts", "record_video.py"), "--out-dir", run_dir,
-                                           "--fps", L("record_fps"), "/uav/follow", "/perception/annotated"],
+                                           "--fps", L("record_fps"), "/follow_cam/image", "/perception/annotated"],
                                       output="screen", name="record_video"))
     return actions
 

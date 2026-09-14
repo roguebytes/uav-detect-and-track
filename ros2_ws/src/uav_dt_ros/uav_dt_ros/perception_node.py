@@ -156,6 +156,12 @@ class PerceptionNode(Node):
 
     # ---- main path ----------------------------------------------------------------------------
     def on_image(self, msg: Image):
+        if self.cam is not None and (msg.width, msg.height) != (self.cam.width, self.cam.height):
+            # camera_info from another camera sharing the topic prefix: rebuild from the frame size and the hfov parameter
+            self.get_logger().warn(f"camera_info said {self.cam.width}x{self.cam.height} but frames are {msg.width}x{msg.height}; "
+                                   f"using hfov {math.degrees(self.hfov):.1f} deg for the frame size")
+            self.cam = CameraModel(msg.width, msg.height, self.hfov)
+            self._build_pipeline()
         if self.pipeline is None or self.pose is None:
             return
         t = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9

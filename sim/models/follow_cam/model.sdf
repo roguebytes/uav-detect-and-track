@@ -14,7 +14,7 @@
         <always_on>1</always_on>
         <update_rate>15</update_rate>
         <visualize>false</visualize>
-        <topic>/uav/follow</topic>
+        <topic>/follow_cam/image</topic>
       </sensor>
     </link>
   </model>

@@ -70,7 +70,7 @@ def setup(context, *args, **kwargs):
                   arguments=[
                       "/uav/camera@sensor_msgs/msg/Image[gz.msgs.Image",
                       "/uav/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo",
-                      "/uav/follow@sensor_msgs/msg/Image[gz.msgs.Image",
+                      "/follow_cam/image@sensor_msgs/msg/Image[gz.msgs.Image",
                       "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
                       f"/model/{model}/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry",
                   ],
