@@ -32,3 +32,6 @@ ros2_ws/build/
 ros2_ws/install/
 ros2_ws/log/
 runs/
+
+# native helper builds (scripts/build_tools.sh)
+build/

@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.16)
+project(gz_set_pose CXX)
+set(CMAKE_CXX_STANDARD 17)
+find_package(gz-transport12 REQUIRED)
+find_package(gz-msgs9 REQUIRED)
+add_executable(gz_set_pose gz_set_pose.cc)
+target_link_libraries(gz_set_pose gz-transport12::core gz-msgs9::gz-msgs9)

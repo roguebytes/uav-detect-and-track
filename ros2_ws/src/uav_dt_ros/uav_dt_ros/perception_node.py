@@ -19,6 +19,7 @@ import json
 import math
 import os
 import time
+from collections import deque
 
 import cv2
 import numpy as np
@@ -68,7 +69,8 @@ class PerceptionNode(Node):
         self.bridge = CvBridge()
         self.cam = None                                   # set from camera_info
         self.hfov = math.radians(float(g("hfov_deg")))
-        self.pose = None                                  # (position, orientation_xyzw, stamp_s)
+        self.pose = None                                  # latest (position, orientation_xyzw, stamp_s)
+        self.pose_hist = deque(maxlen=400)                # recent poses, for interpolation at the image stamp
         self.pipeline = None
         self.frames = 0
         os.makedirs(os.path.dirname(g("log_path")) or ".", exist_ok=True)
@@ -102,7 +104,7 @@ class PerceptionNode(Node):
 
     def on_odom(self, msg: Odometry):
         p, q = msg.pose.pose.position, msg.pose.pose.orientation
-        self.pose = ((p.x, p.y, p.z), (q.x, q.y, q.z, q.w), msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9)
+        self._push_pose((p.x, p.y, p.z), (q.x, q.y, q.z, q.w), msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9)
 
     def on_verdicts(self, msg: String):
         for tid, ok in json.loads(msg.data).items():
@@ -112,7 +114,31 @@ class PerceptionNode(Node):
 
     def on_pose(self, msg: PoseStamped):
         p, q = msg.pose.position, msg.pose.orientation
-        self.pose = ((p.x, p.y, p.z), (q.x, q.y, q.z, q.w), msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9)
+        self._push_pose((p.x, p.y, p.z), (q.x, q.y, q.z, q.w), msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9)
+
+    def _push_pose(self, position, orientation, t):
+        self.pose = (position, orientation, t)
+        self.pose_hist.append(self.pose)
+
+    def pose_at(self, t):
+        """Pose interpolated at time t from the history (linear position, nearest orientation).
+
+        The image and the pose carry the same clock and the pose arrives at 50 Hz. Using the latest
+        pose at callback time instead would put a 7 m/s aircraft up to 1.5 m off after a 0.2 s
+        pipeline delay, enough to break track association at the frame edge."""
+        h = self.pose_hist
+        if not h:
+            return None, None
+        if t <= h[0][2]:
+            return h[0][0], h[0][1]
+        if t >= h[-1][2]:
+            return h[-1][0], h[-1][1]
+        for i in range(len(h) - 1, 0, -1):
+            (p0, q0, t0), (p1, q1, t1) = h[i - 1], h[i]
+            if t0 <= t <= t1:
+                a = (t - t0) / (t1 - t0) if t1 > t0 else 0.0
+                return tuple(p0[k] + a * (p1[k] - p0[k]) for k in range(3)), (q1 if a >= 0.5 else q0)
+        return h[-1][0], h[-1][1]
 
     def _build_pipeline(self):
         g = lambda name: self.get_parameter(name).value  # noqa: E731
@@ -133,7 +159,7 @@ class PerceptionNode(Node):
         if self.pipeline is None or self.pose is None:
             return
         t = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
-        position, orientation, _ = self.pose
+        position, orientation = self.pose_at(t)
         frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
         res = self.pipeline.process(frame, t, position, orientation)
         self.frames += 1

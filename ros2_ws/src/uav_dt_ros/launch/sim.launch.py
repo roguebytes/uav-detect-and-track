@@ -53,6 +53,14 @@ def setup(context, *args, **kwargs):
 
     spawn = Node(package="ros_gz_sim", executable="create", name="spawn_uav", output="screen",
                  arguments=["-world", world, "-file", model_file, "-name", model, "-z", spawn_z])
+    # free-flying video camera, repositioned by follow_cam_node; lite variant when the UAV model is lite
+    follow_model = "follow_cam_lite" if model.endswith("_lite") else "follow_cam"
+    spawn_follow = Node(package="ros_gz_sim", executable="create", name="spawn_follow_cam", output="screen",
+                        arguments=["-world", world, "-file", os.path.join(root, "sim", "models", follow_model, "model.sdf"),
+                                   "-name", follow_model, "-x", "-10", "-z", "4"])
+    follow = Node(package="uav_dt_ros", executable="follow_cam_node", name="follow_cam", output="screen",
+                  parameters=[{"world": world, "entity": follow_model}],
+                  additional_env={"UAV_DT_REPO": root})
 
     px4_env = dict(os.environ, PX4_GZ_STANDALONE="1", PX4_SIM_MODEL="gz_x500", PX4_GZ_MODEL_NAME=model,
                    PX4_GZ_WORLD=world, HEADLESS="1")
@@ -62,7 +70,7 @@ def setup(context, *args, **kwargs):
                   arguments=[
                       "/uav/camera@sensor_msgs/msg/Image[gz.msgs.Image",
                       "/uav/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo",
-                      "/uav/chase@sensor_msgs/msg/Image[gz.msgs.Image",
+                      "/uav/follow@sensor_msgs/msg/Image[gz.msgs.Image",
                       "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
                       f"/model/{model}/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry",
                   ],
@@ -77,7 +85,8 @@ def setup(context, *args, **kwargs):
                   condition=IfCondition(LaunchConfiguration("mavros")))
 
     # order: gazebo, then spawn after 5 s, then PX4 once the spawn process exits, then bridge and MAVROS
-    after_spawn = RegisterEventHandler(OnProcessExit(target_action=spawn, on_exit=[px4, bridge, TimerAction(period=3.0, actions=[mavros])]))
+    after_spawn = RegisterEventHandler(OnProcessExit(target_action=spawn, on_exit=[px4, bridge, spawn_follow, follow,
+                                                                                    TimerAction(period=3.0, actions=[mavros])]))
     return [gz, TimerAction(period=5.0, actions=[spawn]), after_spawn]
 
 

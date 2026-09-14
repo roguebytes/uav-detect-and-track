@@ -6,12 +6,13 @@
 #   scripts/smoke.sh                 # sparse world, 2 verifications
 #   MAX_VERIFY=0 scripts/smoke.sh    # verify every track (slower)
 #   DETECTOR=yolo POSE=mavros scripts/smoke.sh   # real detector on the full-resolution camera (needs GPU + weights)
-#   RECORD=true scripts/smoke.sh     # also write chase-camera and annotated MP4s into the run dir
+#   RECORD=true scripts/smoke.sh     # also write follow-camera and annotated MP4s into the run dir
 set -o pipefail   # no -u: the ROS setup scripts reference unset variables
 cd "$(dirname "$0")/.."
 source scripts/env.sh
 deactivate 2>/dev/null || true            # ROS nodes run on the system Python
 [ -f ros2_ws/install/setup.bash ] || (cd ros2_ws && colcon build --symlink-install >/dev/null)
+[ -x build/gz_set_pose/gz_set_pose ] || scripts/build_tools.sh
 source ros2_ws/install/setup.bash
 export UAV_DT_REPO="$PWD"
 

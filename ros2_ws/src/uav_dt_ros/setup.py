@@ -25,6 +25,7 @@ setup(
         "console_scripts": [
             "perception_node = uav_dt_ros.perception_node:main",
             "mission_node = uav_dt_ros.mission_node:main",
+            "follow_cam_node = uav_dt_ros.follow_cam_node:main",
         ],
     },
 )

@@ -1,0 +1,21 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <!-- A static camera whose pose is set every tick by uav_dt_ros/follow_cam_node through the
+       world's set_pose service. Static, so physics leaves it alone. -->
+  <model name="follow_cam_lite">
+    <static>true</static>
+    <link name="link">
+      <sensor name="follow_cam" type="camera">
+        <camera>
+          <horizontal_fov>1.222</horizontal_fov>
+          <image><width>960</width><height>540</height><format>R8G8B8</format></image>
+          <clip><near>0.1</near><far>1000</far></clip>
+        </camera>
+        <always_on>1</always_on>
+        <update_rate>8</update_rate>
+        <visualize>false</visualize>
+        <topic>/uav/follow</topic>
+      </sensor>
+    </link>
+  </model>
+</sdf>
