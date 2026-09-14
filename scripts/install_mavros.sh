@@ -33,6 +33,11 @@ Pin-Priority: 1001
 EOL
 
 apt-get update
+# MAVROS links libdiagnostic_updater.so, which only exists from diagnostic_updater 4.0.7 on, and the
+# dependency carries no minimum version, so upgrade it explicitly along with its neighbours.
+apt-get install -y --only-upgrade ros-humble-diagnostic-updater ros-humble-diagnostic-msgs ros-humble-geographic-msgs \
+  ros-humble-eigen-stl-containers ros-humble-tf2-eigen
 apt-get install -y --allow-downgrades ros-humble-mavros ros-humble-mavros-extras
+echo "shared-library check:"; ldd /opt/ros/humble/lib/mavros/mavros_node | grep 'not found' && { echo "mavros_node has unresolved libraries"; exit 1; } || echo "  all libraries resolve"
 bash /opt/ros/humble/lib/mavros/install_geographiclib_datasets.sh
 echo "MAVROS installed:"; dpkg -l | grep -E '^ii +ros-humble-(mavros|libmavconn|mavlink)' | awk '{print "  " $2, $3}'
