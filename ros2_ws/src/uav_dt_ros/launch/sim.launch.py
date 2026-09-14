@@ -67,7 +67,9 @@ def setup(context, *args, **kwargs):
                   ],
                   remappings=[(f"/model/{model}/odometry", "/uav/gz_odom")])
 
-    mavros = Node(package="mavros", executable="mavros_node", name="mavros", output="screen",
+    # No name override: mavros_node runs a router, a UAS node and one sub-node per plugin, and renaming
+    # them all "mavros" makes plugin topics collide. Dict parameters apply to every node via /**.
+    mavros = Node(package="mavros", executable="mavros_node", output="screen",
                   parameters=[{"fcu_url": "udp://:14540@127.0.0.1:14580", "gcs_url": "", "tgt_system": 1, "tgt_component": 1,
                                "fcu_protocol": "v2.0"},
                               os.path.join(root, "ros2_ws", "src", "uav_dt_ros", "config", "mavros_plugins.yaml")],

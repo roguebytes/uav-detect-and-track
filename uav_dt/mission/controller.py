@@ -126,14 +126,14 @@ class MavrosPx4Controller(FlightController):
     def takeoff(self, altitude):
         x, y, _ = self._pose
         self._yaw = getattr(self, "_yaw_now", 0.0)
-        self._target = (x, y, altitude)
+        self._target = (float(x), float(y), float(altitude))
         self._ticks = 0
         self._pending_offboard, self._pending_arm = True, True
 
     def goto(self, x, y, z, yaw=None):
         if yaw is not None:
-            self._yaw = yaw
-        self._target = (x, y, z)
+            self._yaw = float(yaw)
+        self._target = (float(x), float(y), float(z))
 
     def land(self):
         from mavros_msgs.srv import CommandTOL
