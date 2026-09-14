@@ -53,7 +53,7 @@ class MavrosPx4Controller(FlightController):
     def __init__(self, node, setpoint_hz: float = 20.0, ns: str = "/mavros"):
         from geometry_msgs.msg import PoseStamped
         from mavros_msgs.msg import State
-        from mavros_msgs.srv import CommandBool, CommandTOL, SetMode
+        from mavros_msgs.srv import CommandBool, CommandTOL, ParamSetV2, SetMode
         from rclpy.qos import QoSProfile, ReliabilityPolicy
 
         self.node, self._PoseStamped = node, PoseStamped
@@ -66,6 +66,10 @@ class MavrosPx4Controller(FlightController):
         self._arm_cli = node.create_client(CommandBool, f"{ns}/cmd/arming")
         self._mode_cli = node.create_client(SetMode, f"{ns}/set_mode")
         self._land_cli = node.create_client(CommandTOL, f"{ns}/cmd/land")
+        self._param_cli = node.create_client(ParamSetV2, f"{ns}/param/set")
+        # survey-friendly PX4 limits: 5 m/s, gentle acceleration, 20 deg max tilt (a DJI-class survey profile)
+        self.px4_params = {"MPC_XY_VEL_MAX": 5.0, "MPC_ACC_HOR": 2.0, "MPC_TILTMAX_AIR": 20.0, "MPC_Z_VEL_MAX_DN": 2.0}
+        self._params_sent = False
         self._timer = node.create_timer(1.0 / setpoint_hz, self._tick)
         self._ticks = 0
 
@@ -101,6 +105,19 @@ class MavrosPx4Controller(FlightController):
             req = SetMode.Request(); req.custom_mode = mode
             self._mode_cli.call_async(req)
 
+    def _send_params(self):
+        from mavros_msgs.srv import ParamSetV2
+        from rcl_interfaces.msg import ParameterValue
+        if not self._param_cli.service_is_ready():
+            return False
+        for name, value in self.px4_params.items():
+            req = ParamSetV2.Request()
+            req.param_id = name
+            req.value = ParameterValue(type=3, double_value=float(value))   # 3 = PARAMETER_DOUBLE
+            self._param_cli.call_async(req)
+        self.node.get_logger().info(f"sent PX4 params {self.px4_params}")
+        return True
+
     def _call_arm(self, value):
         from mavros_msgs.srv import CommandBool
         if self._arm_cli.service_is_ready():
@@ -124,6 +141,8 @@ class MavrosPx4Controller(FlightController):
         return self._target
 
     def takeoff(self, altitude):
+        if not self._params_sent:
+            self._params_sent = self._send_params()
         x, y, _ = self._pose
         self._yaw = getattr(self, "_yaw_now", 0.0)
         self._target = (float(x), float(y), float(altitude))

@@ -61,6 +61,7 @@ class PerceptionNode(Node):
             ("gt_pixel_noise", 1.0),
             ("ground_z", 0.0),
             ("min_height_agl", 5.0),               # ignore frames below this: on the ground the nadir camera sees nothing useful
+            ("max_tilt_deg", 6.0),                 # ignore frames taken while banking: a body-fixed nadir camera geolocates poorly in turns
             ("gate_m", 1.5),
             ("log_path", "runs/perception.jsonl"),
             ("publish_annotated", True),
@@ -175,6 +176,12 @@ class PerceptionNode(Node):
         t = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
         position, orientation = self.pose_at(t)
         if position is None or position[2] - float(self.get_parameter("ground_z").value) < float(self.get_parameter("min_height_agl").value):
+            return
+        qx, qy, qz, qw = orientation
+        roll = math.degrees(math.atan2(2 * (qw * qx + qy * qz), 1 - 2 * (qx * qx + qy * qy)))
+        pitch = math.degrees(math.asin(max(-1.0, min(1.0, 2 * (qw * qy - qz * qx)))))
+        if max(abs(roll), abs(pitch)) > float(self.get_parameter("max_tilt_deg").value):
+            self.skipped_tilt = getattr(self, "skipped_tilt", 0) + 1
             return
         frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
         res = self.pipeline.process(frame, t, position, orientation)
