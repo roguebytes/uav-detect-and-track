@@ -61,10 +61,11 @@ class PerceptionNode(Node):
             ("gt_pixel_noise", 1.0),
             ("ground_z", 0.0),
             ("min_height_agl", 5.0),               # ignore frames below this: on the ground the nadir camera sees nothing useful
-            ("max_tilt_deg", 6.0),                 # ignore frames taken while banking: a body-fixed nadir camera geolocates poorly in turns
+            ("max_tilt_deg", 12.0),                # ignore frames taken while banking (turns reach 20 deg); cruise at 5 m/s is 5 to 8 deg
             ("gate_m", 1.5),
             ("log_path", "runs/perception.jsonl"),
             ("publish_annotated", True),
+            ("frame_stride", 1),                   # process every Nth frame to cap GPU load (and heat)
             ("hfov_deg", 70.0),
         ])
         g = lambda name: self.get_parameter(name).value  # noqa: E731
@@ -172,6 +173,9 @@ class PerceptionNode(Node):
             self.cam = CameraModel(msg.width, msg.height, self.hfov)
             self._build_pipeline()
         if self.pipeline is None or self.pose is None:
+            return
+        self.seen = getattr(self, "seen", 0) + 1
+        if (self.seen - 1) % int(self.get_parameter("frame_stride").value):
             return
         t = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
         position, orientation = self.pose_at(t)

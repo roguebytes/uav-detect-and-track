@@ -25,7 +25,7 @@ MODEL="${MODEL:-$([ "$DETECTOR" = gt ] && echo x500_nadir_cam_lite || echo x500_
 RUN="${RUN_NAME:-smoke_$(date +%Y%m%d_%H%M%S)}"
 LOGDIR="runs/$RUN"; mkdir -p "$LOGDIR"
 
-MAX_CPU_TEMP="${MAX_CPU_TEMP:-95}"          # abort before the CPU's thermal trip; the laptop hard-froze twice under full load
+MAX_CPU_TEMP="${MAX_CPU_TEMP:-90}"          # abort before the CPU's thermal trip; the laptop hard-froze twice under full load
 thermal_monitor() {
   # every 5 s: CPU package temp, hottest core, GPU temp and power, load average -> $LOGDIR/thermal.log
   while true; do
@@ -34,6 +34,7 @@ thermal_monitor() {
     echo "$(date +%H:%M:%S) cpu=${pkg}C gpu=${gpu} load=$(cut -d' ' -f1 /proc/loadavg)" >> "$LOGDIR/thermal.log"
     if [ "$pkg" -ge "$MAX_CPU_TEMP" ]; then
       echo "smoke: CPU package ${pkg}C >= ${MAX_CPU_TEMP}C, aborting to avoid a thermal freeze" | tee -a "$LOGDIR/thermal.log"
+      touch "$LOGDIR/THERMAL_ABORT"
       kill -INT $$ 2>/dev/null
       return
     fi
@@ -66,10 +67,12 @@ echo "smoke: MAVROS connected after ${i}s"; sleep 5
 
 echo "smoke: starting perception ($DETECTOR, pose from $POSE) and mission (max_verify=$MAX_VERIFY)"
 ros2 launch uav_dt_ros mission.launch.py world:="$WORLD" model:="$MODEL" detector:="$DETECTOR" pose_source:="$POSE" \
-  max_verify:="$MAX_VERIFY" dwell_s:="$DWELL" run_name:="$RUN" record:="${RECORD:-false}" > "$LOGDIR/mission.log" 2>&1 &
+  max_verify:="$MAX_VERIFY" dwell_s:="$DWELL" run_name:="$RUN" record:="${RECORD:-false}" \
+  half:="${HALF:-true}" frame_stride:="${FRAME_STRIDE:-1}" > "$LOGDIR/mission.log" 2>&1 &
 MP=$!
 T0=$(date +%s)
 while [ $(( $(date +%s) - T0 )) -lt "$TIMEOUT_S" ]; do
+  [ -f "$LOGDIR/THERMAL_ABORT" ] && { echo "smoke: thermal abort, stopping the stack now"; exit 3; }
   grep -q '"state": "done"' "$LOGDIR/mission.jsonl" 2>/dev/null && break
   kill -0 "$MP" 2>/dev/null || break
   sleep 5

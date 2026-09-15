@@ -24,7 +24,8 @@ def setup(context, *a, **k):
                          "weights": os.path.join(root, "models", "scratch_best.pt"),
                          "world_manifest": manifest, "log_path": os.path.join(run_dir, "perception.jsonl"),
                          "device": L("device"), "half": L("half") == "true", "conf": float(L("conf")),
-                         "gt_miss_rate": float(L("gt_miss_rate")), "use_sim_time": True}
+                         "gt_miss_rate": float(L("gt_miss_rate")), "use_sim_time": True,
+                         "frame_stride": int(L("frame_stride"))}
     venv_python = os.environ.get("UAV_DT_PYTHON")
     if venv_python and os.path.exists(venv_python):
         # torch and ultralytics live in the repo venv; ros2 entry points use the system interpreter
@@ -61,7 +62,8 @@ def generate_launch_description():
         DeclareLaunchArgument("detector", default_value="yolo", description="yolo | gt"),
         DeclareLaunchArgument("pose_source", default_value="mavros", description="mavros | gz"),
         DeclareLaunchArgument("device", default_value="", description="torch device, e.g. 0 or cpu"),
-        DeclareLaunchArgument("half", default_value="false"),
+        DeclareLaunchArgument("half", default_value="true", description="FP16 inference on the GPU: halves GPU time and heat"),
+        DeclareLaunchArgument("frame_stride", default_value="1", description="process every Nth camera frame"),
         DeclareLaunchArgument("conf", default_value="0.25"),
         DeclareLaunchArgument("gt_miss_rate", default_value="0.0", description="oracle detector per-frame miss probability"),
         DeclareLaunchArgument("field_w", default_value="120"),
