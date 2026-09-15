@@ -33,7 +33,7 @@ class Recorder(Node):
         self.have_nvenc = "h264_nvenc" in encoders and shutil.which("nvidia-smi") is not None
         self.have_x264 = "libx264" in encoders
         self.get_logger().info("encoder: " + ("h264_nvenc (GPU)" if self.have_nvenc else "libx264 (CPU)" if self.have_x264 else "mpeg4"))
-        qos = QoSProfile(depth=2, reliability=ReliabilityPolicy.BEST_EFFORT)
+        qos = QoSProfile(depth=4, reliability=ReliabilityPolicy.RELIABLE)   # large frames drop under best-effort
         for t in topics:
             self.create_subscription(Image, t, lambda msg, t=t: self.on_image(t, msg), qos)
         self.get_logger().info(f"recording {topics} to {out_dir} at {fps} fps")

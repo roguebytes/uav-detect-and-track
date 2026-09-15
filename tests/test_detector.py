@@ -18,7 +18,7 @@ def test_tile_grid_covers_frame_with_overlap():
 def test_nms_merges_duplicates_across_tile_overlap():
     dets = np.array([[100, 100, 114, 112, 0.6, 0], [101, 100, 115, 113, 0.5, 0], [500, 500, 514, 512, 0.4, 0]], dtype=np.float32)
     kept = nms(dets, 0.5)
-    assert len(kept) == 2 and kept[0, 4] == 0.6
+    assert len(kept) == 2 and abs(float(kept[0, 4]) - 0.6) < 1e-6
 
 
 def test_edge_boxes_dropped():

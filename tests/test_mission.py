@@ -37,7 +37,7 @@ def run(mission, tracks, obs_for, max_ticks=5000):
 def test_full_sequence_with_two_tracks():
     ctl = FakeController()
     wps = [(-10, 0, 40, 0.0), (10, 0, 40, 0.0), (10, 5, 40, math.pi), (-10, 5, 40, math.pi)]
-    m = SurveyVerifyMission(ctl, wps, 40, 11, QuadDescendVerify(dwell_s=2.0), settle_s=0.0)
+    m = SurveyVerifyMission(ctl, wps, 40, 11, QuadDescendVerify(dwell_s=2.0), settle_s=0.0, dwell_min_frames=1)
     tracks = [(1, 5.0, 1.0), (2, -8.0, 4.0)]
 
     def obs(mission):   # bowl 1 is really there, bowl 2 is not
@@ -59,6 +59,23 @@ def test_full_sequence_with_two_tracks():
 
 def test_no_tracks_goes_straight_home():
     ctl = FakeController()
-    m = SurveyVerifyMission(ctl, [(0, 0, 40, 0.0), (10, 0, 40, 0.0)], 40, 11, QuadDescendVerify(1.0), settle_s=0.0)
+    m = SurveyVerifyMission(ctl, [(0, 0, 40, 0.0), (10, 0, 40, 0.0)], 40, 11, QuadDescendVerify(1.0), settle_s=0.0, dwell_min_frames=1)
     run(m, [], lambda mission: ())
     assert m.verdicts == {} and [s for _, s in m.transitions] == ["takeoff", "survey", "verify", "return", "land", "done"]
+
+
+def test_dwell_waits_for_frames_then_gives_up():
+    ctl = FakeController()
+    m = SurveyVerifyMission(ctl, [(0, 0, 40, 0.0)], 40, 11, QuadDescendVerify(dwell_s=1.0), settle_s=0.0,
+                            dwell_min_frames=3, dwell_max_s=6.0)
+    tracks = [(1, 5.0, 1.0)]
+    t = 0.0
+    while m.state is not State.VERIFY or m.dwell_until is None:
+        m.tick(t, tracks, ()); t += 0.5
+    start = t
+    while m.dwell_until is not None and t < start + 4.0:      # no frames arrive: the 1 s timer alone must not end the dwell
+        m.tick(t, tracks, None); t += 0.5
+    assert m.dwell_until is not None
+    while m.dwell_until is not None:                          # ... but the deadline does
+        m.tick(t, tracks, None); t += 0.5
+    assert m.verdicts == {1: False} and t - start <= 6.5

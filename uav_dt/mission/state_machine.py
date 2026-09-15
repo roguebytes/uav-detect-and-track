@@ -27,10 +27,12 @@ class State(Enum):
 class SurveyVerifyMission:
     def __init__(self, controller, waypoints, survey_alt: float, verify_alt: float, strategy,
                  wp_tol: float = 1.5, verify_radius: float = 0.75, verify_ratio: float = 0.5,
-                 max_verify: int | None = None, home=(0.0, 0.0), settle_s: float = 1.0):
+                 max_verify: int | None = None, home=(0.0, 0.0), settle_s: float = 1.0,
+                 dwell_min_frames: int = 3, dwell_max_s: float = 15.0):
         self.ctl, self.waypoints, self.survey_alt, self.verify_alt = controller, list(waypoints), survey_alt, verify_alt
         self.strategy, self.wp_tol, self.verify_radius, self.verify_ratio = strategy, wp_tol, verify_radius, verify_ratio
         self.max_verify, self.home, self.settle_s = max_verify, home, settle_s
+        self.dwell_min_frames, self.dwell_max_s = dwell_min_frames, dwell_max_s
         self.state, self.wp_index = State.INIT, 0
         self.targets: list = []                # verify targets in visiting order: (id, x, y)
         self.steps: list = []                  # remaining steps of the low-altitude pass
@@ -117,7 +119,10 @@ class SurveyVerifyMission:
         elif step[0] == "dwell":
             _, seconds, tid = step
             self.current = next(t for t in self.targets if t[0] == tid)
+            # the dwell lasts at least `seconds` and until `dwell_min_frames` perception frames have
+            # arrived, capped at dwell_max_s: a verdict needs evidence, not just elapsed time
             self.dwell_until = now + seconds
+            self.dwell_deadline = now + self.dwell_max_s
             self.dwell_frames = self.dwell_hits = 0
             self._last_frame_key = None
 
@@ -130,7 +135,8 @@ class SurveyVerifyMission:
                 self.dwell_frames += 1
                 if any(math.hypot(px - x, py - y) <= self.verify_radius for px, py in observations):
                     self.dwell_hits += 1
-            if now >= self.dwell_until:
+            enough = self.dwell_frames >= self.dwell_min_frames
+            if (now >= self.dwell_until and enough) or now >= self.dwell_deadline:
                 self.verdicts[tid] = self.dwell_frames > 0 and self.dwell_hits / self.dwell_frames >= self.verify_ratio
                 self.dwell_until = None
                 self._next_step(now)

@@ -65,7 +65,8 @@ class PerceptionNode(Node):
             ("gate_m", 1.5),
             ("log_path", "runs/perception.jsonl"),
             ("publish_annotated", True),
-            ("frame_stride", 1),                   # process every Nth frame to cap GPU load (and heat)
+            ("frame_stride", 1),                   # process every Nth frame to cap GPU load (and heat) ...
+            ("stride_min_height", 20.0),           # ... but only above this height: the verify dwell needs every frame
             ("hfov_deg", 70.0),
         ])
         g = lambda name: self.get_parameter(name).value  # noqa: E731
@@ -81,8 +82,11 @@ class PerceptionNode(Node):
         self.get_logger().info(f"logging frames to {g('log_path')}")
 
         qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
+        # 36 MB frames over the default UDP transport lose about half their messages with a best-effort
+        # subscription (one dropped fragment loses the frame); reliable delivery retransmits and keeps 1 Hz
+        image_qos = QoSProfile(depth=2, reliability=ReliabilityPolicy.RELIABLE)
         self.create_subscription(CameraInfo, g("camera_info_topic"), self.on_camera_info, qos)
-        self.create_subscription(Image, g("image_topic"), self.on_image, qos)
+        self.create_subscription(Image, g("image_topic"), self.on_image, image_qos)
         if g("pose_source") == "gz":
             self.create_subscription(Odometry, g("gz_odom_topic"), self.on_odom, qos)
             self.get_logger().info(f"pose from Gazebo odometry {g('gz_odom_topic')}")
@@ -175,11 +179,13 @@ class PerceptionNode(Node):
         if self.pipeline is None or self.pose is None:
             return
         self.seen = getattr(self, "seen", 0) + 1
-        if (self.seen - 1) % int(self.get_parameter("frame_stride").value):
-            return
         t = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
         position, orientation = self.pose_at(t)
         if position is None or position[2] - float(self.get_parameter("ground_z").value) < float(self.get_parameter("min_height_agl").value):
+            self.skipped_low = getattr(self, "skipped_low", 0) + 1
+            return
+        if position[2] > float(self.get_parameter("stride_min_height").value) and (self.seen - 1) % int(self.get_parameter("frame_stride").value):
+            self.skipped_stride = getattr(self, "skipped_stride", 0) + 1
             return
         qx, qy, qz, qw = orientation
         roll = math.degrees(math.atan2(2 * (qw * qx + qy * qz), 1 - 2 * (qx * qx + qy * qy)))
@@ -194,8 +200,9 @@ class PerceptionNode(Node):
         self.log.flush()
         self.publish(msg.header, frame, res)
         if self.frames % 5 == 1:
-            self.get_logger().info(f"frame {self.frames}: {len(res.detections)} dets, {len(res.tracks)} confirmed tracks, "
-                                   f"inference {res.inference_s:.2f}s at {position[2]:.1f} m")
+            self.get_logger().info(f"frame {self.frames} of {self.seen} received: {len(res.detections)} dets, {len(res.tracks)} confirmed tracks, "
+                                   f"inference {res.inference_s:.2f}s at {position[2]:.1f} m; skipped tilt {getattr(self, 'skipped_tilt', 0)} "
+                                   f"low {getattr(self, 'skipped_low', 0)} stride {getattr(self, 'skipped_stride', 0)}")
 
     def publish(self, header, frame, res):
         d2 = Detection2DArray(header=header)
