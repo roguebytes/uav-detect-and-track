@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sdf version='1.9'>
+  <!-- The PX4 x500 airframe meshes with no motors, sensors or physics: a prop that scripts/replay_follow.py
+       moves along a logged trajectory so the follow camera can be re-rendered smoothly after a mission. -->
+  <model name='x500_visual'>
+    <static>true</static>
+    <include merge='true'>
+      <uri>model://x500_base</uri>
+    </include>
+  </model>
+</sdf>

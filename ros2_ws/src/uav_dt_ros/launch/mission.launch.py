@@ -52,6 +52,9 @@ def setup(context, *a, **k):
         actions.append(ExecuteProcess(cmd=["python3", os.path.join(root, "scripts", "record_video.py"), "--out-dir", run_dir,
                                            "--fps", L("record_fps"), "/follow_cam/image", "/perception/annotated"],
                                       output="screen", name="record_video"))
+        actions.append(ExecuteProcess(cmd=["python3", os.path.join(root, "scripts", "record_trajectory.py"),
+                                           "--out", os.path.join(run_dir, "trajectory.csv")],
+                                      output="screen", name="record_trajectory"))
     return actions
 
 
