@@ -69,7 +69,9 @@ class MavrosPx4Controller(FlightController):
         self._param_cli = node.create_client(ParamSetV2, f"{ns}/param/set")
         # survey-friendly PX4 limits: 5 m/s, gentle acceleration, 20 deg max tilt (a DJI-class survey profile)
         self.px4_params = {"MPC_XY_VEL_MAX": 5.0, "MPC_ACC_HOR": 2.0, "MPC_TILTMAX_AIR": 20.0, "MPC_Z_VEL_MAX_DN": 2.0}
-        self._params_sent = False
+        self._params_pending = dict(self.px4_params)     # not yet confirmed by the FCU
+        self._param_futures = {}
+        self._param_last_try = 0.0
         self._timer = node.create_timer(1.0 / setpoint_hz, self._tick)
         self._ticks = 0
 
@@ -83,6 +85,7 @@ class MavrosPx4Controller(FlightController):
         self._yaw_now = math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z))
 
     def _tick(self):
+        self._send_params()
         if self._target is None:
             return
         msg = self._PoseStamped()
@@ -106,17 +109,32 @@ class MavrosPx4Controller(FlightController):
             self._mode_cli.call_async(req)
 
     def _send_params(self):
+        """Set PX4 params through MAVROS, retrying until the FCU confirms each one.
+
+        MAVROS refuses sets until its initial parameter pull has finished, which takes longer than
+        our takeoff, so a single fire-and-forget request silently fails."""
         from mavros_msgs.srv import ParamSetV2
         from rcl_interfaces.msg import ParameterValue
-        if not self._param_cli.service_is_ready():
-            return False
-        for name, value in self.px4_params.items():
+        if not self._params_pending or not self._param_cli.service_is_ready():
+            return
+        for name, fut in list(self._param_futures.items()):
+            if fut.done():
+                res = fut.result()
+                if res is not None and res.success:
+                    self._params_pending.pop(name, None)
+                    self.node.get_logger().info(f"PX4 {name} = {res.value.double_value:.2f} confirmed")
+                del self._param_futures[name]
+        now = self.node.get_clock().now().nanoseconds * 1e-9
+        if now - self._param_last_try < 2.0:
+            return
+        self._param_last_try = now
+        for name, value in self._params_pending.items():
+            if name in self._param_futures:
+                continue
             req = ParamSetV2.Request()
             req.param_id = name
-            req.value = ParameterValue(type=3, double_value=float(value))   # 3 = PARAMETER_DOUBLE
-            self._param_cli.call_async(req)
-        self.node.get_logger().info(f"sent PX4 params {self.px4_params}")
-        return True
+            req.value = ParameterValue(type=3, double_value=float(value))   # 3 = PARAMETER_DOUBLE -> MAV_PARAM_TYPE_REAL32
+            self._param_futures[name] = self._param_cli.call_async(req)
 
     def _call_arm(self, value):
         from mavros_msgs.srv import CommandBool
@@ -141,8 +159,6 @@ class MavrosPx4Controller(FlightController):
         return self._target
 
     def takeoff(self, altitude):
-        if not self._params_sent:
-            self._params_sent = self._send_params()
         x, y, _ = self._pose
         self._yaw = getattr(self, "_yaw_now", 0.0)
         self._target = (float(x), float(y), float(altitude))
