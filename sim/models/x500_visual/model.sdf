@@ -13,12 +13,12 @@
       <visual name="frustum_fill">
         <geometry><mesh><uri>model://x500_visual/frustum.obj</uri></mesh></geometry>
         <material>
-          <ambient>0.2 0.6 1.0 0.18</ambient>
-          <diffuse>0.2 0.6 1.0 0.18</diffuse>
+          <ambient>0.25 0.65 1.0 1</ambient>
+          <diffuse>0.25 0.65 1.0 1</diffuse>
           <specular>0 0 0 1</specular>
-          <emissive>0.1 0.3 0.6 1</emissive>
         </material>
-        <transparency>0.82</transparency>
+        <transparency>0.75</transparency>
+        <double_sided>true</double_sided>
         <cast_shadows>false</cast_shadows>
       </visual>
     </link>
