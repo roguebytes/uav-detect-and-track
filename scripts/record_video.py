@@ -29,7 +29,10 @@ class Recorder(Node):
         self.writers, self.last_t, self.counts = {}, {}, {}
         if not shutil.which("ffmpeg"):
             raise SystemExit("ffmpeg not found; install it with apt")
-        self.have_x264 = "libx264" in subprocess.run(["ffmpeg", "-hide_banner", "-encoders"], capture_output=True, text=True).stdout
+        encoders = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"], capture_output=True, text=True).stdout
+        self.have_nvenc = "h264_nvenc" in encoders and shutil.which("nvidia-smi") is not None
+        self.have_x264 = "libx264" in encoders
+        self.get_logger().info("encoder: " + ("h264_nvenc (GPU)" if self.have_nvenc else "libx264 (CPU)" if self.have_x264 else "mpeg4"))
         qos = QoSProfile(depth=2, reliability=ReliabilityPolicy.BEST_EFFORT)
         for t in topics:
             self.create_subscription(Image, t, lambda msg, t=t: self.on_image(t, msg), qos)
@@ -60,7 +63,13 @@ class Recorder(Node):
         self.last_t[topic] = t
 
     def _open_ffmpeg(self, path, w, h):
-        codec = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20"] if self.have_x264 else ["-c:v", "mpeg4", "-q:v", "3"]
+        # NVENC keeps the encode off the CPU: two software encoders plus the sim overheated the laptop.
+        if self.have_nvenc:
+            codec = ["-c:v", "h264_nvenc", "-preset", "p4", "-rc", "vbr", "-cq", "23", "-b:v", "0"]
+        elif self.have_x264:
+            codec = ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "22"]
+        else:
+            codec = ["-c:v", "mpeg4", "-q:v", "3"]
         cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24",
                "-s", f"{w}x{h}", "-r", str(self.fps), "-i", "-", *codec, "-pix_fmt", "yuv420p",
                "-movflags", "+frag_keyframe+empty_moov+default_base_moof", path]

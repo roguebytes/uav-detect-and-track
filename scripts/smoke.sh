@@ -25,8 +25,25 @@ MODEL="${MODEL:-$([ "$DETECTOR" = gt ] && echo x500_nadir_cam_lite || echo x500_
 RUN="${RUN_NAME:-smoke_$(date +%Y%m%d_%H%M%S)}"
 LOGDIR="runs/$RUN"; mkdir -p "$LOGDIR"
 
+MAX_CPU_TEMP="${MAX_CPU_TEMP:-95}"          # abort before the CPU's thermal trip; the laptop hard-froze twice under full load
+thermal_monitor() {
+  # every 5 s: CPU package temp, hottest core, GPU temp and power, load average -> $LOGDIR/thermal.log
+  while true; do
+    pkg=$(cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | sort -n | tail -1); pkg=$((pkg/1000))
+    gpu=$(nvidia-smi --query-gpu=temperature.gpu,power.draw,utilization.gpu --format=csv,noheader,nounits 2>/dev/null | tr -d ' ')
+    echo "$(date +%H:%M:%S) cpu=${pkg}C gpu=${gpu} load=$(cut -d' ' -f1 /proc/loadavg)" >> "$LOGDIR/thermal.log"
+    if [ "$pkg" -ge "$MAX_CPU_TEMP" ]; then
+      echo "smoke: CPU package ${pkg}C >= ${MAX_CPU_TEMP}C, aborting to avoid a thermal freeze" | tee -a "$LOGDIR/thermal.log"
+      kill -INT $$ 2>/dev/null
+      return
+    fi
+    sleep 5
+  done
+}
+
 cleanup() {
   echo "smoke: cleaning up"
+  [ -n "${TM:-}" ] && kill "$TM" 2>/dev/null
   # stop the recorder first and give ffmpeg time to flush before anything else goes down
   for p in $(pgrep -f 'scripts/record_video.py' 2>/dev/null); do kill -INT "$p" 2>/dev/null; done; sleep 3
   [ -n "${MP:-}" ] && kill -INT "$MP" 2>/dev/null
@@ -38,6 +55,7 @@ cleanup() {
 trap cleanup EXIT
 # a stale PX4 makes the new one exit with "already running"
 pkill -x px4 2>/dev/null; pkill -x ruby 2>/dev/null; sleep 1
+thermal_monitor & TM=$!
 
 echo "smoke: starting sim ($WORLD, $MODEL, headless)"
 ros2 launch uav_dt_ros sim.launch.py world:="$WORLD" model:="$MODEL" headless:=true mavros:=true > "$LOGDIR/sim.log" 2>&1 &
@@ -57,7 +75,7 @@ while [ $(( $(date +%s) - T0 )) -lt "$TIMEOUT_S" ]; do
   sleep 5
 done
 grep -q '"state": "done"' "$LOGDIR/mission.jsonl" 2>/dev/null || { echo "smoke: mission did not finish in ${TIMEOUT_S}s, see $LOGDIR/mission.log"; exit 1; }
-echo "smoke: mission done in $(( $(date +%s) - T0 ))s wall"
+echo "smoke: mission done in $(( $(date +%s) - T0 ))s wall; peak CPU $(grep -oE 'cpu=[0-9]+' "$LOGDIR/thermal.log" | cut -d= -f2 | sort -n | tail -1)C, peak GPU $(grep -oE 'gpu=[0-9]+' "$LOGDIR/thermal.log" | cut -d= -f2 | sort -n | tail -1)C"
 
 python3 scripts/score.py "$LOGDIR/perception.jsonl" "sim/worlds/$WORLD.json" --markdown "$LOGDIR/results.md" --min-recall 1.0 \
   | python3 -c "import json,sys; t=sys.stdin.read(); r=json.loads(t[:t.rindex('}')+1]); s=r['survey']; v=r.get('verify',{}); print(f\"smoke: survey recall {s['recall']:.2f} precision {s['precision']:.2f} mean error {s['mean_error_m']:.3f} m, verified {v.get('tp','-')}/{v.get('verified','-')}, mission {r['mission_time_s']:.0f} s sim\")" \
