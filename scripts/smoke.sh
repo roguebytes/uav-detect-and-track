@@ -69,7 +69,7 @@ echo "smoke: MAVROS connected after ${i}s"; sleep 5
 echo "smoke: starting perception ($DETECTOR, pose from $POSE) and mission (max_verify=$MAX_VERIFY)"
 ros2 launch uav_dt_ros mission.launch.py world:="$WORLD" model:="$MODEL" detector:="$DETECTOR" pose_source:="$POSE" \
   max_verify:="$MAX_VERIFY" dwell_s:="$DWELL" run_name:="$RUN" record:="${RECORD:-false}" \
-  half:="${HALF:-true}" frame_stride:="${FRAME_STRIDE:-1}" > "$LOGDIR/mission.log" 2>&1 &
+  half:="${HALF:-true}" frame_stride:="${FRAME_STRIDE:-1}" stride_min_height:="${STRIDE_MIN_HEIGHT:-20}" > "$LOGDIR/mission.log" 2>&1 &
 MP=$!
 T0=$(date +%s)
 while [ $(( $(date +%s) - T0 )) -lt "$TIMEOUT_S" ]; do

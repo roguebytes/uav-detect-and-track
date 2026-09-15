@@ -25,7 +25,7 @@ def setup(context, *a, **k):
                          "world_manifest": manifest, "log_path": os.path.join(run_dir, "perception.jsonl"),
                          "device": L("device"), "half": L("half") == "true", "conf": float(L("conf")),
                          "gt_miss_rate": float(L("gt_miss_rate")), "use_sim_time": True,
-                         "frame_stride": int(L("frame_stride"))}
+                         "frame_stride": int(L("frame_stride")), "stride_min_height": float(L("stride_min_height"))}
     venv_python = os.environ.get("UAV_DT_PYTHON")
     if venv_python and os.path.exists(venv_python):
         # torch and ultralytics live in the repo venv; ros2 entry points use the system interpreter
@@ -64,6 +64,7 @@ def generate_launch_description():
         DeclareLaunchArgument("device", default_value="", description="torch device, e.g. 0 or cpu"),
         DeclareLaunchArgument("half", default_value="true", description="FP16 inference on the GPU: halves GPU time and heat"),
         DeclareLaunchArgument("frame_stride", default_value="1", description="process every Nth camera frame"),
+        DeclareLaunchArgument("stride_min_height", default_value="20", description="apply the stride only above this height (0 = everywhere)"),
         DeclareLaunchArgument("conf", default_value="0.25"),
         DeclareLaunchArgument("gt_miss_rate", default_value="0.0", description="oracle detector per-frame miss probability"),
         DeclareLaunchArgument("field_w", default_value="120"),
