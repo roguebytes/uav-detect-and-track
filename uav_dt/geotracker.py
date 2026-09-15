@@ -10,6 +10,7 @@ Numpy only.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -53,9 +54,11 @@ class GeoTracker:
     """
 
     def __init__(self, gate_m: float = 1.5, high_thresh: float = 0.4, low_thresh: float = 0.1,
-                 min_hits: int = 2, max_misses: int = 50):
+                 min_hits: int = 2, max_misses: int = 50, merge_m: float | None = None):
         self.gate_m, self.high_thresh, self.low_thresh = gate_m, high_thresh, low_thresh
         self.min_hits, self.max_misses = min_hits, max_misses
+        self.merge_m = gate_m * 0.7 if merge_m is None else merge_m   # two tracks this close are one target
+        self.merged: dict[int, int] = {}                              # absorbed id -> surviving id
         self.tracks: list[GeoTrack] = []
         self._next_id = 1
 
@@ -100,10 +103,40 @@ class GeoTracker:
             self._next_id += 1
 
         self.tracks = [tr for tr in self.tracks if tr.misses <= self.max_misses or tr.confirmed]
+        self._merge_close()
         return [tr for tr in self.tracks if tr.hits >= self.min_hits]
+
+    def _merge_close(self):
+        """Absorb tracks whose running positions have converged inside merge_m.
+
+        A bowl seen first from a tilted or distant frame can spawn a second track just outside the
+        gate; as both accumulate observations their means converge. The track with more hits keeps
+        its id and inherits the other's observations and verdict."""
+        changed = True
+        while changed:
+            changed = False
+            ordered = sorted(self.tracks, key=lambda t: (-t.hits, t.id))
+            for i, a in enumerate(ordered):
+                for b in ordered[i + 1:]:
+                    if math.hypot(a.x - b.x, a.y - b.y) <= self.merge_m:
+                        obs = sorted(a.observations + b.observations)
+                        a.observations = obs
+                        a.x = sum(o[1] for o in obs) / len(obs)
+                        a.y = sum(o[2] for o in obs) / len(obs)
+                        a.hits, a.score = a.hits + b.hits, max(a.score, b.score)
+                        a.first_seen, a.last_seen = min(a.first_seen, b.first_seen), max(a.last_seen, b.last_seen)
+                        if a.verified is None:
+                            a.verified = b.verified
+                        self.merged[b.id] = a.id
+                        self.tracks.remove(b)
+                        changed = True
+                        break
+                if changed:
+                    break
 
     def confirmed(self) -> list[GeoTrack]:
         return [tr for tr in self.tracks if tr.hits >= self.min_hits]
 
     def get(self, track_id: int) -> GeoTrack | None:
+        track_id = self.merged.get(track_id, track_id)
         return next((tr for tr in self.tracks if tr.id == track_id), None)

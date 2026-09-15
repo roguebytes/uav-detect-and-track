@@ -95,7 +95,7 @@ class PerceptionNode(Node):
             self.get_logger().info(f"pose from {g('mavros_pose_topic')}")
         self.det_pub = self.create_publisher(Detection2DArray, "~/detections", 10)
         self.track_pub = self.create_publisher(Detection3DArray, "~/tracks", 10)
-        self.img_pub = self.create_publisher(Image, "~/annotated", qos)
+        self.img_pub = self.create_publisher(Image, "~/annotated", image_qos)   # reliable, so the recorder's reliable subscriber connects
         self.gp_pub = self.create_publisher(String, "~/ground_points", 10)   # JSON [[x, y], ...] per frame, for the verify dwell
         self.create_subscription(String, "/mission/verdicts", self.on_verdicts, 10)
 

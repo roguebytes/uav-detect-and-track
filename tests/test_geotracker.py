@@ -43,3 +43,16 @@ def test_confirmed_track_survives_misses():
     for k in range(5):
         tr.update([], t=2.0 + k)
     assert len(tr.confirmed()) == 1
+
+
+def test_converging_duplicate_tracks_merge():
+    tr = GeoTracker(gate_m=1.5, merge_m=1.3)
+    tr.update([[0.0, 0.0, 0.6, 40]], t=0.0)
+    tr.update([[0.1, 0.0, 0.6, 40]], t=1.0)             # track 1 confirmed at the bowl
+    tr.update([[2.0, 0.0, 0.6, 40]], t=2.0)             # a poorly geolocated sighting 2 m away spawns track 2
+    assert len(tr.tracks) == 2
+    for k, x in enumerate([1.3, 1.2, 1.1, 1.0]):        # later sightings closer to track 2 pull its mean toward the bowl
+        tr.update([[0.1, 0.0, 0.6, 40], [x, 0.0, 0.6, 40]], t=3.0 + k)
+    assert len(tr.tracks) == 1 and tr.tracks[0].id == 1
+    assert tr.get(2) is tr.tracks[0]                    # the absorbed id still resolves
+    assert tr.tracks[0].hits == 2 + 4 + 1 + 4
