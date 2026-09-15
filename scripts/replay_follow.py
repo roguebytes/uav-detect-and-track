@@ -83,9 +83,21 @@ def main():
                 break
         else:
             sys.exit(f"gz sim did not come up, see {gz_log.name}")
-        for name in (a.quad_model, "follow_cam"):
+        # the follow camera saves every rendered frame to PNG: transport from Gazebo to a recorder drops
+        # a third of the 2.7 MB frames on this machine, and a video assembled from files has no gaps
+        frames_dir = os.path.join(a.run, "replay_frames")
+        if os.path.isdir(frames_dir):
+            for f in os.listdir(frames_dir):
+                os.remove(os.path.join(frames_dir, f))
+        os.makedirs(frames_dir, exist_ok=True)
+        cam_sdf = open(os.path.join(repo, "sim", "models", "follow_cam", "model.sdf")).read()
+        cam_sdf = cam_sdf.replace("</clip>", f"</clip>\n          <save enabled=\"true\"><path>{frames_dir}</path></save>")
+        cam_sdf = cam_sdf.replace("<update_rate>30</update_rate>", f"<update_rate>{a.fps}</update_rate>")
+        cam_file = os.path.join(a.run, "replay_follow_cam.sdf")
+        open(cam_file, "w").write(cam_sdf)
+        for name, model_file in ((a.quad_model, os.path.join(repo, "sim", "models", a.quad_model, "model.sdf")), ("follow_cam", cam_file)):
             subprocess.run(["ros2", "run", "ros_gz_sim", "create", "-world", a.world, "-name", name,
-                            "-file", os.path.join(repo, "sim", "models", name, "model.sdf"), "-z", "0.3"], check=True,
+                            "-file", model_file, "-z", "0.3"], check=True,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         procs.append(subprocess.Popen(["ros2", "run", "ros_gz_bridge", "parameter_bridge",
                                        "/follow_cam/image@sensor_msgs/msg/Image[gz.msgs.Image",
@@ -113,12 +125,12 @@ def main():
         setter.stdin.write(f"{a.quad_model} {x:.3f} {y:.3f} {z:.3f} {qx:.6f} {qy:.6f} {qz:.6f} {qw:.6f}\n")
         setter.stdin.write(f"follow_cam {cx:.3f} {cy:.3f} {cz:.3f} {q[0]:.6f} {q[1]:.6f} {q[2]:.6f} {q[3]:.6f}\n")
         time.sleep(2)
-        replay_dir = os.path.join(a.run, "replay")            # keep the live recording of the same topic intact
-        os.makedirs(replay_dir, exist_ok=True)
-        rec = subprocess.Popen(["python3", os.path.join(repo, "scripts", "record_video.py"), "--out-dir", replay_dir,
-                                "--fps", str(a.fps), "/follow_cam/image"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        procs.append(rec)
+        # Gazebo renders a camera only while something subscribes; the frames themselves come from the PNGs
+        sub = subprocess.Popen(["gz", "topic", "-e", "-t", "/follow_cam/image"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        procs.append(sub)
         time.sleep(2)
+        for f in os.listdir(frames_dir):                      # drop frames rendered before the start pose settled
+            os.remove(os.path.join(frames_dir, f))
         # step the trajectory in simulation time at pose_hz, several times the camera rate, so every
         # rendered frame sees a pose no older than one pose tick (phase jitter between a 30 Hz pose
         # stream and a 30 Hz camera repeated or skipped every other frame)
@@ -147,11 +159,21 @@ def main():
             k += 1
             if k % int(a.pose_hz * 30) == 0:
                 print(f"  {tt:.0f} s  (wall {time.time() - wall_start:.0f} s)", flush=True)
-        time.sleep(2)
-        rec.send_signal(2)
-        rec.wait(timeout=30)
-        os.replace(os.path.join(replay_dir, "follow_cam_image.mp4"), os.path.join(a.run, "replay_follow.mp4"))
-        print(f"wrote {os.path.join(a.run, 'replay_follow.mp4')}")
+        time.sleep(1)
+        sub.send_signal(2)
+        # assemble the PNG sequence (Gazebo names them <scoped sensor>_<n>.png, in render order)
+        pngs = sorted((f for f in os.listdir(frames_dir) if f.endswith(".png")), key=lambda f: int(f.rsplit("_", 1)[1][:-4]))
+        for i, f in enumerate(pngs):
+            os.replace(os.path.join(frames_dir, f), os.path.join(frames_dir, f"frame_{i:06d}.png"))
+        out = os.path.join(a.run, "replay_follow.mp4")
+        encoders = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"], capture_output=True, text=True).stdout
+        codec = ["-c:v", "h264_nvenc", "-preset", "p6", "-cq", "22", "-b:v", "0"] if "h264_nvenc" in encoders else ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20"]
+        subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-framerate", str(a.fps), "-i", os.path.join(frames_dir, "frame_%06d.png"),
+                        *codec, "-pix_fmt", "yuv420p", "-movflags", "+faststart", out], check=True)
+        for f in os.listdir(frames_dir):
+            os.remove(os.path.join(frames_dir, f))
+        expected = int((t_end - a.start) * a.fps)
+        print(f"wrote {out}: {len(pngs)} frames ({expected} expected for {t_end - a.start:.0f} s at {a.fps} fps)")
     finally:
         try:
             rclpy.shutdown()
