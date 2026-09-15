@@ -35,11 +35,19 @@ class GeoTrack:
     def confirmed(self) -> bool:
         return self.hits >= 2
 
+    @staticmethod
+    def _weight(height_agl: float) -> float:
+        """Geolocation error scales with height (pixel and attitude error project further), so weight by 1/h^2."""
+        return 1.0 / max(float(height_agl), 1.0) ** 2
+
+    def _recompute(self) -> None:
+        w = [self._weight(o[4]) for o in self.observations]
+        self.x = sum(o[1] * wi for o, wi in zip(self.observations, w)) / sum(w)
+        self.y = sum(o[2] * wi for o, wi in zip(self.observations, w)) / sum(w)
+
     def update(self, x: float, y: float, score: float, t: float, height_agl: float) -> None:
         self.observations.append((t, x, y, score, height_agl))
-        n = len(self.observations)
-        self.x = self.x + (x - self.x) / n
-        self.y = self.y + (y - self.y) / n
+        self._recompute()
         self.score = max(self.score, score)
         self.hits += 1
         self.misses = 0
@@ -119,10 +127,8 @@ class GeoTracker:
             for i, a in enumerate(ordered):
                 for b in ordered[i + 1:]:
                     if math.hypot(a.x - b.x, a.y - b.y) <= self.merge_m:
-                        obs = sorted(a.observations + b.observations)
-                        a.observations = obs
-                        a.x = sum(o[1] for o in obs) / len(obs)
-                        a.y = sum(o[2] for o in obs) / len(obs)
+                        a.observations = sorted(a.observations + b.observations)
+                        a._recompute()
                         a.hits, a.score = a.hits + b.hits, max(a.score, b.score)
                         a.first_seen, a.last_seen = min(a.first_seen, b.first_seen), max(a.last_seen, b.last_seen)
                         if a.verified is None:

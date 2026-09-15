@@ -56,3 +56,12 @@ def test_converging_duplicate_tracks_merge():
     assert len(tr.tracks) == 1 and tr.tracks[0].id == 1
     assert tr.get(2) is tr.tracks[0]                    # the absorbed id still resolves
     assert tr.tracks[0].hits == 2 + 4 + 1 + 4
+
+
+def test_low_altitude_sightings_dominate_the_position():
+    tr = GeoTracker(gate_m=1.5)
+    tr.update([[1.0, 0.0, 0.6, 40]], t=0.0)
+    tr.update([[1.0, 0.0, 0.6, 40]], t=1.0)
+    tr.update([[0.0, 0.0, 0.9, 11]], t=2.0)               # one 11 m sighting outweighs two 40 m ones (13x each)
+    x = tr.confirmed()[0].x
+    assert 0.1 < x < 0.2
