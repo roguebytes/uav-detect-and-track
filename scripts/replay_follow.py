@@ -51,6 +51,7 @@ def main():
     ap.add_argument("--yaw-smoothing", type=float, default=0.04)
     ap.add_argument("--quad-model", default="x500_visual", help="x500_visual (with camera frustum) or x500_visual_plain")
     ap.add_argument("--rtf", type=float, default=0.4, help="world real-time factor: lower lets a slow renderer keep 30 Hz in sim time")
+    ap.add_argument("--pose-hz", type=float, default=120.0, help="pose update rate in sim time; well above the camera rate so no render sees a stale pose")
     a = ap.parse_args()
     repo = os.environ.get("UAV_DT_REPO") or os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     traj = np.loadtxt(os.path.join(a.run, "trajectory.csv"), skiprows=1)
@@ -118,17 +119,18 @@ def main():
                                 "--fps", str(a.fps), "/follow_cam/image"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         procs.append(rec)
         time.sleep(2)
-        # step the trajectory in simulation time at the recording frame rate: frame k is placed just
-        # before sim time sim0 + k/fps, so each camera frame sees the pose for its own timestamp
+        # step the trajectory in simulation time at pose_hz, several times the camera rate, so every
+        # rendered frame sees a pose no older than one pose tick (phase jitter between a 30 Hz pose
+        # stream and a 30 Hz camera repeated or skipped every other frame)
         sim0 = now_sim()
         wall_start = time.time()
-        step = 1.0 / a.fps
+        step = 1.0 / a.pose_hz
         k = 0
         while True:
             tt = a.start + k * step
             if tt > t_end:
                 break
-            while now_sim() < sim0 + k * step - step / 2:
+            while now_sim() < sim0 + k * step:
                 pass
             i = min(np.searchsorted(t, tt), len(t) - 1)
             i0 = max(i - 1, 0)
@@ -143,7 +145,7 @@ def main():
             if procs[0].poll() is not None:
                 sys.exit(f"gz sim died during the replay, see {gz_log.name}")
             k += 1
-            if k % (a.fps * 30) == 0:
+            if k % int(a.pose_hz * 30) == 0:
                 print(f"  {tt:.0f} s  (wall {time.time() - wall_start:.0f} s)", flush=True)
         time.sleep(2)
         rec.send_signal(2)
