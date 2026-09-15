@@ -75,6 +75,6 @@ def generate_launch_description():
         DeclareLaunchArgument("max_verify", default_value="0", description="0 = verify every confirmed track"),
         DeclareLaunchArgument("run_name", default_value=""),
         DeclareLaunchArgument("record", default_value="false", description="record follow-camera and annotated video to the run dir"),
-        DeclareLaunchArgument("record_fps", default_value="15"),
+        DeclareLaunchArgument("record_fps", default_value="30"),
         OpaqueFunction(function=setup),
     ])

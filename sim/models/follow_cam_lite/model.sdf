@@ -12,7 +12,7 @@
           <clip><near>0.1</near><far>1000</far></clip>
         </camera>
         <always_on>1</always_on>
-        <update_rate>8</update_rate>
+        <update_rate>15</update_rate>
         <visualize>false</visualize>
         <topic>/follow_cam/image</topic>
       </sensor>

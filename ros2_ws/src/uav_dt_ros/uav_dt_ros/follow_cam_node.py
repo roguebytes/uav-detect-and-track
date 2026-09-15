@@ -2,7 +2,8 @@
 
 Reads the UAV's ground-truth odometry (/uav/gz_odom), computes a camera pose `distance` metres
 behind the nose (using the UAV's yaw) and `height` metres above it, pitched down by `pitch_deg`
-with zero roll, and sets it through the world's set_pose service at `rate_hz`. The service is
+with zero roll, and sets it through the world's set_pose service at `rate_hz` (50 Hz, matching
+the odometry, so the 30 fps camera never sees a position step). The service is
 called through tools/gz_set_pose (a small persistent gz-transport client fed over a pipe): the
 ros_gz service bridge on this Humble build never answers, and the gz CLI costs 0.3 s per call.
 Because the camera does not roll or pitch with the airframe, altitude changes and the descent to
@@ -24,11 +25,12 @@ class FollowCamNode(Node):
     def __init__(self):
         super().__init__("follow_cam")
         self.declare_parameters("", [("world", "bowl_field_sparse"), ("entity", "follow_cam"), ("odom_topic", "/uav/gz_odom"),
-                                     ("distance", 7.0), ("height", 3.0), ("pitch_deg", 20.0), ("rate_hz", 10.0),
-                                     ("yaw_smoothing", 0.15)])
+                                     ("distance", 7.0), ("height", 3.0), ("pitch_deg", 20.0), ("rate_hz", 50.0),
+                                     ("yaw_smoothing", 0.04), ("pos_smoothing", 0.35)])
         g = lambda n: self.get_parameter(n).value  # noqa: E731
         self.entity, self.d, self.h = g("entity"), float(g("distance")), float(g("height"))
-        self.pitch, self.alpha = math.radians(float(g("pitch_deg"))), float(g("yaw_smoothing"))
+        self.pitch, self.alpha, self.beta = math.radians(float(g("pitch_deg"))), float(g("yaw_smoothing")), float(g("pos_smoothing"))
+        self.cam_pos = None
         exe = os.environ.get("GZ_SET_POSE") or os.path.join(os.environ.get("UAV_DT_REPO", "."), "build", "gz_set_pose", "gz_set_pose")
         if not os.path.exists(exe):
             raise SystemExit(f"{exe} not found; build it with scripts/build_tools.sh")
@@ -52,7 +54,13 @@ class FollowCamNode(Node):
         else:   # low-pass the yaw so the camera swings smoothly through turns
             d = math.atan2(math.sin(yaw - self.yaw_f), math.cos(yaw - self.yaw_f))
             self.yaw_f += self.alpha * d
-        cx, cy, cz = p.x - self.d * math.cos(self.yaw_f), p.y - self.d * math.sin(self.yaw_f), p.z + self.h
+        tx, ty, tz = p.x - self.d * math.cos(self.yaw_f), p.y - self.d * math.sin(self.yaw_f), p.z + self.h
+        # first-order lag on the camera position: at 50 Hz this removes step artefacts without visible drag
+        if self.cam_pos is None:
+            self.cam_pos = [tx, ty, tz]
+        else:
+            self.cam_pos = [c + self.beta * (t - c) for c, t in zip(self.cam_pos, (tx, ty, tz))]
+        cx, cy, cz = self.cam_pos
         # orientation: yaw toward the UAV, pitch down, no roll (ZYX)
         cy2, sy2 = math.cos(self.yaw_f / 2), math.sin(self.yaw_f / 2)
         cp2, sp2 = math.cos(self.pitch / 2), math.sin(self.pitch / 2)
