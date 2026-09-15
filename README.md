@@ -6,7 +6,7 @@ once to 11 m and hops between the candidates to verify each one. It mirrors the 
 from my Remote Sensing paper on time-efficient UAV search strategies, in which surveying high and
 verifying low cut mission cost by 46% in sparse fields.
 
-RESULTS_GIF_PLACEHOLDER
+![verification pass: the annotated nadir view at 11 m](docs/results/verify.gif)
 
 > Scope: a civilian aerial-robotics demo (search and rescue, conservation, agriculture, survey
 > planning). The perception code is airframe-agnostic; the control action sits behind an interface
@@ -22,7 +22,21 @@ against the world's ground truth.
 
 ## Results
 
-RESULTS_TABLE_PLACEHOLDER
+| | Sparse field (12 bowls, 12.5 per ha) | Dense field (60 bowls, 62.5 per ha) |
+|---|---|---|
+| Survey recall / precision | 1.00 / 1.00 | 1.00 / 1.00 |
+| Bowls found on the survey (TP / FP / FN) | 12 / 0 / 0 | 60 / 0 / 0 |
+| Verified true / rejected | 12 / 0 | 60 / 0 |
+| Verified recall / precision | 1.00 / 1.00 | 1.00 / 1.00 |
+| Geolocation error, mean / max (m) | 0.45 / 0.56 | 0.48 / 0.65 |
+| Mission time, takeoff to landing (s) | 290 | 667 |
+| Frames processed / inference per frame (s) | 187 / 0.70 | 265 / 0.60 |
+
+Field 120 x 80 m, survey at 40 m and 5 m/s with 30% side overlap, verify at 11 m with one descent and
+hops between candidates, every second frame processed at survey altitude. Ground truth from the
+world generator's manifest; a track counts as correct within 2 m of an unmatched bowl on the survey
+and within 0.75 m at verification. Full tables: `docs/results/sparse.md`, `docs/results/dense.md`.
+
 
 Detector: YOLOv9-C fine-tuned on real DJI Mini 4 Pro frames of bowls on grass at 11, 15 and
 40 m (Loewenich et al. 2026), run on 640 px tiles at native resolution, FP16 on an RTX 2070.
