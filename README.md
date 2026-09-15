@@ -58,7 +58,21 @@ perception node: tiled YOLO ─► pixel-to-ground geolocation ─►     Flight
 - `uav_dt/`: detector, geolocation, tracker, pipeline, mission state machine, controller adapters. Numpy only apart from the detector; 25 unit tests.
 - `ros2_ws/src/uav_dt_ros/`: `sim.launch.py` (Gazebo, spawn, PX4, MAVROS, bridges, follow camera) and `mission.launch.py` (perception, mission, optional recording).
 - `sim/`: world generator with a JSON ground-truth manifest, camera and bowl models, procedural grass.
-- `scripts/`: `setup.sh`, `env.sh`, `smoke.sh`, `score.py`, `record_video.py`, `install_mavros.sh`.
+- `scripts/`: `setup.sh`, `env.sh`, `smoke.sh`, `score.py`, `record_video.py`, `replay_follow.py`, `install_mavros.sh`.
+- `tools/`: world and texture generators, `flight_path_video.py` (top-down path animation), `video_smoothness.py`.
+
+## Video
+
+A mission records the annotated nadir view live. The third-person clips are rendered afterwards by
+`scripts/replay_follow.py`, which replays the logged 50 Hz trajectory in a sim whose only sensor is
+the follow camera, so nothing stalls the renderer, and draws the survey camera's field of view as a
+translucent cone ending at its footprint. `tools/flight_path_video.py` animates the flight path with
+the survey and the verification pass in different colours.
+
+```bash
+python3 scripts/replay_follow.py --run runs/sparse --world bowl_field_sparse --distance 16 --height 11 --pitch-deg 47
+python3 tools/flight_path_video.py --run runs/sparse --world bowl_field_sparse --out flight_path.mp4
+```
 
 ## Run it
 
