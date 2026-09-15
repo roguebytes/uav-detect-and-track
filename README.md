@@ -65,8 +65,9 @@ perception node: tiled YOLO ─► pixel-to-ground geolocation ─►     Flight
 
 A mission records the annotated nadir view live. The third-person clips are rendered afterwards by
 `scripts/replay_follow.py`, which replays the logged 50 Hz trajectory in a sim whose only sensor is
-the follow camera, so nothing stalls the renderer, and draws the survey camera's field of view as a
-translucent cone ending at its footprint. `tools/flight_path_video.py` animates the flight path with
+the follow camera, runs the world below real time so the renderer keeps up, and takes the frames
+from the camera's own PNG output rather than a topic, so no frame is dropped or repeated. The survey
+camera's field of view is drawn as a translucent cone ending at its footprint. `tools/flight_path_video.py` animates the flight path with
 the survey and the verification pass in different colours.
 
 ```bash
