@@ -5,9 +5,10 @@
 
 Reports duplicates (frames identical to the previous one), the longest duplicate run, and the
 alternation index: median |d[i+1] - d[i]| / median d over moving frames, where d is the mean
-absolute pixel change between consecutive frames. Smooth motion gives an index well under 0.5;
-motion quantised at a lower rate than the frame rate alternates big and small steps and scores
-above 1.
+absolute pixel change between consecutive frames, computed over all frames so repeated frames
+count. Smooth motion gives an index well under 0.5; dropped or repeated frames alternate big and
+zero steps and score near or above 1. Short duplicate runs (1 to 3 frames) are counted separately:
+they are dropped renders, while long runs are genuine stillness such as a hover.
 """
 import argparse
 
@@ -38,9 +39,11 @@ def main():
         c = c + 1 if v else 0
         runs.append(c)
     moving = d[~dup]
-    alt = np.median(np.abs(np.diff(moving))) / max(np.median(moving), 1e-6) if len(moving) > 2 else float("nan")
+    alt = np.median(np.abs(np.diff(d))) / max(np.median(moving), 1e-6) if len(moving) > 2 else float("nan")
+    # short duplicate runs (1 to 3 frames) between moving frames are dropped renders, not stillness
+    short = sum(1 for i in range(1, len(runs)) if 0 < runs[i - 1] <= 3 and runs[i] == 0)
     print(f"{a.clip}: {fps:.0f} fps, {k} frames, duplicates {dup.sum()} ({100 * dup.mean():.1f}%), "
-          f"longest duplicate run {max(runs) if runs else 0} frames, alternation index {alt:.2f}")
+          f"longest duplicate run {max(runs) if runs else 0} frames, short duplicate runs {short}, alternation index {alt:.2f}")
 
 
 if __name__ == "__main__":

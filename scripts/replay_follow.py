@@ -10,7 +10,10 @@ scripts/record_video.py records /follow_cam/image. Output: <run>/replay_follow.m
 
 During a mission the 12 MP survey camera stalls Gazebo's render thread for over 100 ms every
 second, so the live follow-camera recording skips and repeats frames. Here the only sensor is the
-follow camera, so the render keeps up and every frame is a new frame.
+follow camera, and the world runs slower than real time (--rtf, default 0.4) so the renderer keeps
+up with the 30 Hz camera in simulation time. The trajectory is driven by the simulation clock and
+the recorder paces by simulation timestamps, so the video plays at true speed regardless of how
+fast the machine renders.
 """
 import argparse
 import math
@@ -20,6 +23,9 @@ import sys
 import time
 
 import numpy as np
+import rclpy
+from rclpy.node import Node
+from rosgraph_msgs.msg import Clock
 
 
 def quat_yaw(qx, qy, qz, qw):
@@ -44,6 +50,7 @@ def main():
     ap.add_argument("--pitch-deg", type=float, default=20.0)
     ap.add_argument("--yaw-smoothing", type=float, default=0.04)
     ap.add_argument("--quad-model", default="x500_visual", help="x500_visual (with camera frustum) or x500_visual_plain")
+    ap.add_argument("--rtf", type=float, default=0.4, help="world real-time factor: lower lets a slow renderer keep 30 Hz in sim time")
     a = ap.parse_args()
     repo = os.environ.get("UAV_DT_REPO") or os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     traj = np.loadtxt(os.path.join(a.run, "trajectory.csv"), skiprows=1)
@@ -52,7 +59,11 @@ def main():
     print(f"trajectory: {len(traj)} poses over {t[-1]:.0f} s, replaying {a.start:.0f} to {t_end:.0f} s at {a.fps} fps")
     gz_set_pose = os.path.join(repo, "build", "gz_set_pose", "gz_set_pose")
 
-    world_file = os.path.join(repo, "sim", "worlds", a.world + ".sdf")
+    # a copy of the world with the requested real-time factor
+    src = open(os.path.join(repo, "sim", "worlds", a.world + ".sdf")).read()
+    import re
+    world_file = os.path.join(a.run, f"replay_{a.world}.sdf")
+    open(world_file, "w").write(re.sub(r"<real_time_factor>[^<]*</real_time_factor>", f"<real_time_factor>{a.rtf}</real_time_factor>", src, count=1))
     # leftovers from an earlier replay would fight this one for the world and the pose service
     subprocess.run(["pkill", "-x", "ruby"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     subprocess.run(["pkill", "-x", "gz_set_pose"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -60,7 +71,7 @@ def main():
     procs = []
     gz_log = open(os.path.join(a.run, "replay_gz.log"), "w")
     try:
-        procs.append(subprocess.Popen(["gz", "sim", "-s", "-r", "--headless-rendering", "-v", "2", world_file],
+        procs.append(subprocess.Popen(["gz", "sim", "-s", "-r", *([] if os.environ.get("REPLAY_GLX") else ["--headless-rendering"]), "-v", "2", world_file],
                                       stdout=gz_log, stderr=subprocess.STDOUT))
         for _ in range(60):                                   # wait for the world clock, up to 30 s
             time.sleep(0.5)
@@ -76,9 +87,21 @@ def main():
                             "-file", os.path.join(repo, "sim", "models", name, "model.sdf"), "-z", "0.3"], check=True,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         procs.append(subprocess.Popen(["ros2", "run", "ros_gz_bridge", "parameter_bridge",
-                                       "/follow_cam/image@sensor_msgs/msg/Image[gz.msgs.Image"],
+                                       "/follow_cam/image@sensor_msgs/msg/Image[gz.msgs.Image",
+                                       "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock"],
                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
         time.sleep(3)
+        rclpy.init()
+        clock_node = Node("replay_clock")
+        sim_time = [None]
+        clock_node.create_subscription(Clock, "/clock", lambda m: sim_time.__setitem__(0, m.clock.sec + m.clock.nanosec * 1e-9), 10)
+
+        def now_sim():
+            rclpy.spin_once(clock_node, timeout_sec=0.02)
+            return sim_time[0]
+
+        while now_sim() is None:
+            pass
         setter = subprocess.Popen([gz_set_pose, a.world], stdin=subprocess.PIPE, text=True, bufsize=1)
         procs.append(setter)
         # place both at the start pose, then start recording
@@ -95,14 +118,18 @@ def main():
                                 "--fps", str(a.fps), "/follow_cam/image"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         procs.append(rec)
         time.sleep(2)
-        # step the trajectory in wall time at the recording frame rate (the sim runs at real time)
-        wall0 = time.time()
+        # step the trajectory in simulation time at the recording frame rate: frame k is placed just
+        # before sim time sim0 + k/fps, so each camera frame sees the pose for its own timestamp
+        sim0 = now_sim()
+        wall_start = time.time()
         step = 1.0 / a.fps
         k = 0
         while True:
             tt = a.start + k * step
             if tt > t_end:
                 break
+            while now_sim() < sim0 + k * step - step / 2:
+                pass
             i = min(np.searchsorted(t, tt), len(t) - 1)
             i0 = max(i - 1, 0)
             f = 0.0 if t[i] == t[i0] else (tt - t[i0]) / (t[i] - t[i0])
@@ -116,17 +143,18 @@ def main():
             if procs[0].poll() is not None:
                 sys.exit(f"gz sim died during the replay, see {gz_log.name}")
             k += 1
-            sleep_for = wall0 + k * step - time.time()
-            if sleep_for > 0:
-                time.sleep(sleep_for)
             if k % (a.fps * 30) == 0:
-                print(f"  {tt:.0f} s", flush=True)
+                print(f"  {tt:.0f} s  (wall {time.time() - wall_start:.0f} s)", flush=True)
         time.sleep(2)
         rec.send_signal(2)
         rec.wait(timeout=30)
         os.replace(os.path.join(replay_dir, "follow_cam_image.mp4"), os.path.join(a.run, "replay_follow.mp4"))
         print(f"wrote {os.path.join(a.run, 'replay_follow.mp4')}")
     finally:
+        try:
+            rclpy.shutdown()
+        except Exception:
+            pass
         for p in procs:
             try:
                 p.send_signal(2)
