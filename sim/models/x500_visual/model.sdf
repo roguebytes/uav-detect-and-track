@@ -1,11 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <sdf version='1.9'>
   <!-- The PX4 x500 airframe meshes with no motors, sensors or physics: a prop that scripts/replay_follow.py
-       moves along a logged trajectory so the follow camera can be re-rendered smoothly after a mission. -->
+       moves along a logged trajectory so the follow camera can be re-rendered smoothly after a mission.
+       The frustum link draws the survey camera's field of view; the ground hides the part below it. -->
   <model name='x500_visual'>
     <static>true</static>
     <include merge='true'>
       <uri>model://x500_base</uri>
     </include>
+    <link name="frustum">
+      <pose relative_to="base_link">0 0 -0.05 0 0 0</pose>
+      <visual name="frustum_fill">
+        <geometry><mesh><uri>model://x500_visual/frustum.obj</uri></mesh></geometry>
+        <material>
+          <ambient>0.2 0.6 1.0 0.18</ambient>
+          <diffuse>0.2 0.6 1.0 0.18</diffuse>
+          <specular>0 0 0 1</specular>
+          <emissive>0.1 0.3 0.6 1</emissive>
+        </material>
+        <transparency>0.82</transparency>
+        <cast_shadows>false</cast_shadows>
+      </visual>
+    </link>
+    <joint name="frustum_joint" type="fixed"><parent>base_link</parent><child>frustum</child></joint>
   </model>
 </sdf>
