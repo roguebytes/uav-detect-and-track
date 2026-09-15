@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sdf version='1.9'>
+  <!-- The PX4 x500 airframe meshes with no motors, sensors or physics: a prop that scripts/replay_follow.py
+       moves along a logged trajectory so the follow camera can be re-rendered smoothly after a mission.
+       The frustum link draws the survey camera's field of view; the ground hides the part below it. -->
+  <model name='x500_visual_plain'>
+    <static>true</static>
+    <include merge='true'>
+      <uri>model://x500_base</uri>
+    </include>
+  </model>
+</sdf>

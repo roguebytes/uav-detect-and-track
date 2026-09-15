@@ -43,6 +43,7 @@ def main():
     ap.add_argument("--height", type=float, default=3.0)
     ap.add_argument("--pitch-deg", type=float, default=20.0)
     ap.add_argument("--yaw-smoothing", type=float, default=0.04)
+    ap.add_argument("--quad-model", default="x500_visual", help="x500_visual (with camera frustum) or x500_visual_plain")
     a = ap.parse_args()
     repo = os.environ.get("UAV_DT_REPO") or os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     traj = np.loadtxt(os.path.join(a.run, "trajectory.csv"), skiprows=1)
@@ -52,12 +53,25 @@ def main():
     gz_set_pose = os.path.join(repo, "build", "gz_set_pose", "gz_set_pose")
 
     world_file = os.path.join(repo, "sim", "worlds", a.world + ".sdf")
+    # leftovers from an earlier replay would fight this one for the world and the pose service
+    subprocess.run(["pkill", "-x", "ruby"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["pkill", "-x", "gz_set_pose"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    time.sleep(1)
     procs = []
+    gz_log = open(os.path.join(a.run, "replay_gz.log"), "w")
     try:
-        procs.append(subprocess.Popen(["gz", "sim", "-s", "-r", "--headless-rendering", "-v", "1", world_file],
-                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
-        time.sleep(6)
-        for name in ("x500_visual", "follow_cam"):
+        procs.append(subprocess.Popen(["gz", "sim", "-s", "-r", "--headless-rendering", "-v", "2", world_file],
+                                      stdout=gz_log, stderr=subprocess.STDOUT))
+        for _ in range(60):                                   # wait for the world clock, up to 30 s
+            time.sleep(0.5)
+            if procs[0].poll() is not None:
+                sys.exit(f"gz sim exited early, see {gz_log.name}")
+            topics = subprocess.run(["gz", "topic", "-l"], capture_output=True, text=True).stdout
+            if f"/world/{a.world}/clock" in topics:
+                break
+        else:
+            sys.exit(f"gz sim did not come up, see {gz_log.name}")
+        for name in (a.quad_model, "follow_cam"):
             subprocess.run(["ros2", "run", "ros_gz_sim", "create", "-world", a.world, "-name", name,
                             "-file", os.path.join(repo, "sim", "models", name, "model.sdf"), "-z", "0.3"], check=True,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -72,7 +86,7 @@ def main():
         x, y, z, qx, qy, qz, qw = traj[idx, 1:]
         yaw_f = quat_yaw(qx, qy, qz, qw)
         cx, cy, cz, q = follow_pose(x, y, z, yaw_f, a.distance, a.height, math.radians(a.pitch_deg))
-        setter.stdin.write(f"x500_visual {x:.3f} {y:.3f} {z:.3f} {qx:.6f} {qy:.6f} {qz:.6f} {qw:.6f}\n")
+        setter.stdin.write(f"{a.quad_model} {x:.3f} {y:.3f} {z:.3f} {qx:.6f} {qy:.6f} {qz:.6f} {qw:.6f}\n")
         setter.stdin.write(f"follow_cam {cx:.3f} {cy:.3f} {cz:.3f} {q[0]:.6f} {q[1]:.6f} {q[2]:.6f} {q[3]:.6f}\n")
         time.sleep(2)
         replay_dir = os.path.join(a.run, "replay")            # keep the live recording of the same topic intact
@@ -97,8 +111,10 @@ def main():
             yaw = quat_yaw(qx, qy, qz, qw)
             yaw_f += a.yaw_smoothing * math.atan2(math.sin(yaw - yaw_f), math.cos(yaw - yaw_f))
             cx, cy, cz, q = follow_pose(p[0], p[1], p[2], yaw_f, a.distance, a.height, math.radians(a.pitch_deg))
-            setter.stdin.write(f"x500_visual {p[0]:.3f} {p[1]:.3f} {p[2]:.3f} {qx:.6f} {qy:.6f} {qz:.6f} {qw:.6f}\n")
+            setter.stdin.write(f"{a.quad_model} {p[0]:.3f} {p[1]:.3f} {p[2]:.3f} {qx:.6f} {qy:.6f} {qz:.6f} {qw:.6f}\n")
             setter.stdin.write(f"follow_cam {cx:.3f} {cy:.3f} {cz:.3f} {q[0]:.6f} {q[1]:.6f} {q[2]:.6f} {q[3]:.6f}\n")
+            if procs[0].poll() is not None:
+                sys.exit(f"gz sim died during the replay, see {gz_log.name}")
             k += 1
             sleep_for = wall0 + k * step - time.time()
             if sleep_for > 0:
