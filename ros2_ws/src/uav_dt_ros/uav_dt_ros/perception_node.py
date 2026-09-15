@@ -237,17 +237,22 @@ class PerceptionNode(Node):
         if self.get_parameter("publish_annotated").value:
             scale = 0.25
             small = cv2.resize(frame, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+            # a bowl at 40 m is 3 px wide at quarter scale: draw a fixed-size marker box so it reads in video
+            pad = max(14, int(0.02 * small.shape[1]))
             for d, g in zip(res.detections, res.ground_points):
-                x1, y1, x2, y2 = (int(v * scale) for v in d[:4])
-                cv2.rectangle(small, (x1 - 2, y1 - 2), (x2 + 2, y2 + 2), (0, 0, 255), 1)
+                cx, cy = int((d[0] + d[2]) / 2 * scale), int((d[1] + d[3]) / 2 * scale)
+                half = max(pad, int((d[2] - d[0]) * scale / 2) + 6)
+                cv2.rectangle(small, (cx - half, cy - half), (cx + half, cy + half), (0, 60, 255), 2)
                 label = f"{d[4]:.2f}"
                 if g is not None:
                     tr = min(res.tracks, key=lambda tr: math.hypot(tr.x - g[0], tr.y - g[1]), default=None)
                     if tr is not None and math.hypot(tr.x - g[0], tr.y - g[1]) < self.pipeline.tracker.gate_m:
-                        label = f"#{tr.id} {d[4]:.2f}"
-                cv2.putText(small, label, (x1, max(10, y1 - 4)), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
-            cv2.putText(small, f"{res.position[2]:.1f} m AGL  {len(res.tracks)} tracks", (8, 20),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+                        label = f"#{tr.id}  {d[4]:.2f}"
+                cv2.putText(small, label, (cx - half, max(16, cy - half - 6)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 3)
+                cv2.putText(small, label, (cx - half, max(16, cy - half - 6)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 60, 255), 2)
+            hud = f"{res.position[2]:.1f} m AGL   {len(res.detections)} detections   {len(res.tracks)} tracks"
+            cv2.putText(small, hud, (10, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 4)
+            cv2.putText(small, hud, (10, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
             out = self.bridge.cv2_to_imgmsg(small, encoding="bgr8")
             out.header = header
             self.img_pub.publish(out)
