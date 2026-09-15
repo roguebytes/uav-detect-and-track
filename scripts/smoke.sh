@@ -7,6 +7,7 @@
 #   MAX_VERIFY=0 scripts/smoke.sh    # verify every track (slower)
 #   DETECTOR=yolo POSE=mavros scripts/smoke.sh   # real detector on the full-resolution camera (needs GPU + weights)
 #   RECORD=true scripts/smoke.sh     # also write follow-camera and annotated MP4s into the run dir
+#   MIN_RECALL=0 ...                 # do not fail on recall (real-detector result runs)
 set -o pipefail   # no -u: the ROS setup scripts reference unset variables
 cd "$(dirname "$0")/.."
 source scripts/env.sh
@@ -80,6 +81,6 @@ done
 grep -q '"state": "done"' "$LOGDIR/mission.jsonl" 2>/dev/null || { echo "smoke: mission did not finish in ${TIMEOUT_S}s, see $LOGDIR/mission.log"; exit 1; }
 echo "smoke: mission done in $(( $(date +%s) - T0 ))s wall; peak CPU $(grep -oE 'cpu=[0-9]+' "$LOGDIR/thermal.log" | cut -d= -f2 | sort -n | tail -1)C, peak GPU $(grep -oE 'gpu=[0-9]+' "$LOGDIR/thermal.log" | cut -d= -f2 | sort -n | tail -1)C"
 
-python3 scripts/score.py "$LOGDIR/perception.jsonl" "sim/worlds/$WORLD.json" --markdown "$LOGDIR/results.md" --min-recall 1.0 \
+python3 scripts/score.py "$LOGDIR/perception.jsonl" "sim/worlds/$WORLD.json" --markdown "$LOGDIR/results.md" --min-recall "${MIN_RECALL:-1.0}" \
   | python3 -c "import json,sys; t=sys.stdin.read(); r=json.loads(t[:t.rindex('}')+1]); s=r['survey']; v=r.get('verify',{}); print(f\"smoke: survey recall {s['recall']:.2f} precision {s['precision']:.2f} mean error {s['mean_error_m']:.3f} m, verified {v.get('tp','-')}/{v.get('verified','-')}, mission {r['mission_time_s']:.0f} s sim\")" \
   && { echo "SMOKE RUN PASSED ($LOGDIR)"; exit 0; } || { echo "SMOKE RUN FAILED ($LOGDIR)"; exit 1; }
