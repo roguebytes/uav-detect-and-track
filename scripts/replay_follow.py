@@ -10,10 +10,11 @@ scripts/record_video.py records /follow_cam/image. Output: <run>/replay_follow.m
 
 During a mission the 12 MP survey camera stalls Gazebo's render thread for over 100 ms every
 second, so the live follow-camera recording skips and repeats frames. Here the only sensor is the
-follow camera, and the world runs slower than real time (--rtf, default 0.4) so the renderer keeps
-up with the 30 Hz camera in simulation time. The trajectory is driven by the simulation clock and
-the recorder paces by simulation timestamps, so the video plays at true speed regardless of how
-fast the machine renders.
+follow camera and the world is stepped in lockstep: the physics step equals the camera period, so
+for every video frame the script sets the quad and camera poses, steps the paused world once, and
+waits for the camera to write that frame's PNG. Frame k therefore shows exactly pose k of
+uav_dt.video.camera_track, which tools/annotate_follow.py uses to overlay geometry. Wall time is
+whatever the renderer needs; the video plays at true speed.
 """
 import argparse
 import math
@@ -23,19 +24,10 @@ import sys
 import time
 
 import numpy as np
-import rclpy
-from rclpy.node import Node
-from rosgraph_msgs.msg import Clock
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from uav_dt.video import camera_track  # noqa: E402
 
 
-def quat_yaw(qx, qy, qz, qw):
-    return math.atan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy * qy + qz * qz))
-
-
-def follow_pose(x, y, z, yaw, d=7.0, h=3.0, pitch=math.radians(20.0)):
-    cx, cy, cz = x - d * math.cos(yaw), y - d * math.sin(yaw), z + h
-    cy2, sy2, cp2, sp2 = math.cos(yaw / 2), math.sin(yaw / 2), math.cos(pitch / 2), math.sin(pitch / 2)
-    return cx, cy, cz, (-sy2 * sp2, cy2 * sp2, sy2 * cp2, cy2 * cp2)
 
 
 def main():
@@ -48,10 +40,9 @@ def main():
     ap.add_argument("--distance", type=float, default=7.0)
     ap.add_argument("--height", type=float, default=3.0)
     ap.add_argument("--pitch-deg", type=float, default=20.0)
-    ap.add_argument("--yaw-smoothing", type=float, default=0.04)
+    ap.add_argument("--yaw-smoothing", type=float, default=0.15)
     ap.add_argument("--quad-model", default="x500_visual", help="x500_visual (with camera frustum) or x500_visual_plain")
-    ap.add_argument("--rtf", type=float, default=0.4, help="world real-time factor: lower lets a slow renderer keep 30 Hz in sim time")
-    ap.add_argument("--pose-hz", type=float, default=120.0, help="pose update rate in sim time; well above the camera rate so no render sees a stale pose")
+    ap.add_argument("--yaw-smoothing-note", help=argparse.SUPPRESS)
     a = ap.parse_args()
     repo = os.environ.get("UAV_DT_REPO") or os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     traj = np.loadtxt(os.path.join(a.run, "trajectory.csv"), skiprows=1)
@@ -60,11 +51,13 @@ def main():
     print(f"trajectory: {len(traj)} poses over {t[-1]:.0f} s, replaying {a.start:.0f} to {t_end:.0f} s at {a.fps} fps")
     gz_set_pose = os.path.join(repo, "build", "gz_set_pose", "gz_set_pose")
 
-    # a copy of the world with the requested real-time factor
+    # a copy of the world whose physics step is one camera period, so one world step renders one frame
     src = open(os.path.join(repo, "sim", "worlds", a.world + ".sdf")).read()
     import re
     world_file = os.path.join(a.run, f"replay_{a.world}.sdf")
-    open(world_file, "w").write(re.sub(r"<real_time_factor>[^<]*</real_time_factor>", f"<real_time_factor>{a.rtf}</real_time_factor>", src, count=1))
+    src = re.sub(r"<max_step_size>[^<]*</max_step_size>", f"<max_step_size>{1.0 / a.fps:.9f}</max_step_size>", src, count=1)
+    src = re.sub(r"<real_time_update_rate>[^<]*</real_time_update_rate>", "<real_time_update_rate>0</real_time_update_rate>", src, count=1)
+    open(world_file, "w").write(src)
     # leftovers from an earlier replay would fight this one for the world and the pose service
     subprocess.run(["pkill", "-x", "ruby"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     subprocess.run(["pkill", "-x", "gz_set_pose"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -72,7 +65,8 @@ def main():
     procs = []
     gz_log = open(os.path.join(a.run, "replay_gz.log"), "w")
     try:
-        procs.append(subprocess.Popen(["gz", "sim", "-s", "-r", *([] if os.environ.get("REPLAY_GLX") else ["--headless-rendering"]), "-v", "2", world_file],
+        # started paused: every step is commanded explicitly
+        procs.append(subprocess.Popen(["gz", "sim", "-s", *([] if os.environ.get("REPLAY_GLX") else ["--headless-rendering"]), "-v", "2", world_file],
                                       stdout=gz_log, stderr=subprocess.STDOUT))
         for _ in range(60):                                   # wait for the world clock, up to 30 s
             time.sleep(0.5)
@@ -99,66 +93,61 @@ def main():
             subprocess.run(["ros2", "run", "ros_gz_sim", "create", "-world", a.world, "-name", name,
                             "-file", model_file, "-z", "0.3"], check=True,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        procs.append(subprocess.Popen(["ros2", "run", "ros_gz_bridge", "parameter_bridge",
-                                       "/follow_cam/image@sensor_msgs/msg/Image[gz.msgs.Image",
-                                       "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock"],
-                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
-        time.sleep(3)
-        rclpy.init()
-        clock_node = Node("replay_clock")
-        sim_time = [None]
-        clock_node.create_subscription(Clock, "/clock", lambda m: sim_time.__setitem__(0, m.clock.sec + m.clock.nanosec * 1e-9), 10)
-
-        def now_sim():
-            rclpy.spin_once(clock_node, timeout_sec=0.02)
-            return sim_time[0]
-
-        while now_sim() is None:
-            pass
-        setter = subprocess.Popen([gz_set_pose, a.world], stdin=subprocess.PIPE, text=True, bufsize=1)
+        setter = subprocess.Popen([gz_set_pose, a.world], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
         procs.append(setter)
-        # place both at the start pose, then start recording
-        idx = np.searchsorted(t, a.start)
-        x, y, z, qx, qy, qz, qw = traj[idx, 1:]
-        yaw_f = quat_yaw(qx, qy, qz, qw)
-        cx, cy, cz, q = follow_pose(x, y, z, yaw_f, a.distance, a.height, math.radians(a.pitch_deg))
-        setter.stdin.write(f"{a.quad_model} {x:.3f} {y:.3f} {z:.3f} {qx:.6f} {qy:.6f} {qz:.6f} {qw:.6f}\n")
-        setter.stdin.write(f"follow_cam {cx:.3f} {cy:.3f} {cz:.3f} {q[0]:.6f} {q[1]:.6f} {q[2]:.6f} {q[3]:.6f}\n")
-        time.sleep(2)
+
+        def cmd(line):
+            setter.stdin.write(line + "\n")
+
+        def step():
+            cmd("step 1")
+            while setter.stdout.readline().strip() != "stepped":
+                pass
+
+        track = camera_track(traj, a.start, t_end, a.fps, pose_hz=a.fps, distance=a.distance, height=a.height,
+                             pitch_deg=a.pitch_deg, yaw_smoothing=a.yaw_smoothing)
+
+        def place(frame):
+            _, qp, qq, cp, cq = frame
+            cmd(f"{a.quad_model} {qp[0]:.4f} {qp[1]:.4f} {qp[2]:.4f} {qq[0]:.6f} {qq[1]:.6f} {qq[2]:.6f} {qq[3]:.6f}")
+            cmd(f"follow_cam {cp[0]:.4f} {cp[1]:.4f} {cp[2]:.4f} {cq[0]:.6f} {cq[1]:.6f} {cq[2]:.6f} {cq[3]:.6f}")
+            cmd("ping")
+            while setter.stdout.readline().strip() != "ok":
+                pass
+
+        # let the spawns and the first pose settle: a few steps, then discard whatever was rendered
+        place(track[0])
+        for _ in range(5):
+            step()
+        time.sleep(1)
         # Gazebo renders a camera only while something subscribes; the frames themselves come from the PNGs
         sub = subprocess.Popen(["gz", "topic", "-e", "-t", "/follow_cam/image"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         procs.append(sub)
         time.sleep(2)
+        for _ in range(3):
+            step()
+        time.sleep(1)
         for f in os.listdir(frames_dir):                      # drop frames rendered before the start pose settled
             os.remove(os.path.join(frames_dir, f))
-        # step the trajectory in simulation time at pose_hz, several times the camera rate, so every
-        # rendered frame sees a pose no older than one pose tick (phase jitter between a 30 Hz pose
-        # stream and a 30 Hz camera repeated or skipped every other frame)
-        sim0 = now_sim()
+
+        def png_count():
+            return sum(1 for f in os.listdir(frames_dir) if f.endswith(".png"))
+        # lockstep: pose k, one world step, wait for PNG k
         wall_start = time.time()
-        step = 1.0 / a.pose_hz
-        k = 0
-        while True:
-            tt = a.start + k * step
-            if tt > t_end:
-                break
-            while now_sim() < sim0 + k * step:
-                pass
-            i = min(np.searchsorted(t, tt), len(t) - 1)
-            i0 = max(i - 1, 0)
-            f = 0.0 if t[i] == t[i0] else (tt - t[i0]) / (t[i] - t[i0])
-            p = traj[i0, 1:4] + f * (traj[i, 1:4] - traj[i0, 1:4])
-            qx, qy, qz, qw = traj[i, 4:8]
-            yaw = quat_yaw(qx, qy, qz, qw)
-            yaw_f += a.yaw_smoothing * math.atan2(math.sin(yaw - yaw_f), math.cos(yaw - yaw_f))
-            cx, cy, cz, q = follow_pose(p[0], p[1], p[2], yaw_f, a.distance, a.height, math.radians(a.pitch_deg))
-            setter.stdin.write(f"{a.quad_model} {p[0]:.3f} {p[1]:.3f} {p[2]:.3f} {qx:.6f} {qy:.6f} {qz:.6f} {qw:.6f}\n")
-            setter.stdin.write(f"follow_cam {cx:.3f} {cy:.3f} {cz:.3f} {q[0]:.6f} {q[1]:.6f} {q[2]:.6f} {q[3]:.6f}\n")
+        for k, frame in enumerate(track):
+            place(frame)
+            before = png_count()
+            step()
+            for _ in range(600):                              # up to 30 s for the render and PNG write
+                if png_count() > before:
+                    break
+                time.sleep(0.05)
+            else:
+                print(f"  warning: no frame written for step {k}", flush=True)
             if procs[0].poll() is not None:
                 sys.exit(f"gz sim died during the replay, see {gz_log.name}")
-            k += 1
-            if k % int(a.pose_hz * 30) == 0:
-                print(f"  {tt:.0f} s  (wall {time.time() - wall_start:.0f} s)", flush=True)
+            if (k + 1) % (a.fps * 30) == 0:
+                print(f"  {frame[0]:.0f} s  ({k + 1} frames, wall {time.time() - wall_start:.0f} s)", flush=True)
         time.sleep(1)
         sub.send_signal(2)
         # assemble the PNG sequence (Gazebo names them <scoped sensor>_<n>.png, in render order)
@@ -172,13 +161,8 @@ def main():
                         *codec, "-pix_fmt", "yuv420p", "-movflags", "+faststart", out], check=True)
         for f in os.listdir(frames_dir):
             os.remove(os.path.join(frames_dir, f))
-        expected = int((t_end - a.start) * a.fps)
-        print(f"wrote {out}: {len(pngs)} frames ({expected} expected for {t_end - a.start:.0f} s at {a.fps} fps)")
+        print(f"wrote {out}: {len(pngs)} frames ({len(track)} poses for {t_end - a.start:.0f} s at {a.fps} fps)")
     finally:
-        try:
-            rclpy.shutdown()
-        except Exception:
-            pass
         for p in procs:
             try:
                 p.send_signal(2)
