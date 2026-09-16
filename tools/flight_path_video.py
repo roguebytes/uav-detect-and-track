@@ -36,7 +36,7 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--speed", type=float, default=8.0, help="playback speed factor")
     ap.add_argument("--fps", type=int, default=30)
-    ap.add_argument("--width", type=int, default=1280)
+    ap.add_argument("--width", type=int, default=960)
     ap.add_argument("--survey-alt", type=float, default=40.0)
     ap.add_argument("--side-overlap", type=float, default=0.1, help="as flown, to reproduce the first survey waypoint")
     ap.add_argument("--wp-tol", type=float, default=2.5)
@@ -85,9 +85,9 @@ def main():
         return "other"
 
     W = a.width
-    top = 110                                                   # header band for the legend, clear of the map
+    top = 0
     map_h = 2 * (int(W * (fh + 20) / (fw + 20)) // 2)          # even, for yuv420p
-    prof_h = 160
+    prof_h = 120
     H = top + map_h + prof_h
     margin = 10.0                                              # metres of grass beyond the field
     sx = W / (fw + 2 * margin)
@@ -102,19 +102,32 @@ def main():
     for bx, by in bowls:
         cv2.circle(base, to_px(bx, by), 5, (245, 245, 245), -1)
         cv2.circle(base, to_px(bx, by), 5, (60, 60, 60), 1)
-    # legend
-    for i, (name, col) in enumerate([("survey at 40 m", COL["survey"]), ("verification pass at 11 m", COL["verify"]), ("transit / return", COL["other"])]):
-        y = 24 + 24 * i
-        cv2.line(base, (18, y), (58, y), col, 4)
-        cv2.putText(base, name, (68, y + 6), cv2.FONT_HERSHEY_SIMPLEX, 0.6, TEXT, 1, cv2.LINE_AA)
-    cv2.putText(base, f"{len(bowls)} targets, {fw:.0f} x {fh:.0f} m field", (W - 330, 46), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1, cv2.LINE_AA)
+    # legend inside the field, in whichever corner the flight path and targets leave clear
+    legend = [("survey at 40 m", COL["survey"]), ("verification pass at 11 m", COL["verify"]), ("transit / return", COL["other"])]
+    lw, lh = 300, 24 * len(legend) + 36
+    fx0, fy0 = to_px(-fw / 2, fh / 2); fx1, fy1 = to_px(fw / 2, -fh / 2)
+    pad = 14
+    corners = [(fx0 + pad, fy0 + pad), (fx1 - pad - lw, fy0 + pad), (fx0 + pad, fy1 - pad - lh), (fx1 - pad - lw, fy1 - pad - lh)]
+    pts = [to_px(x, y) for x, y in xyz[::5, :2]] + [to_px(bx, by) for bx, by in bowls]
+
+    def clutter(cx, cy):
+        return sum(1 for px_, py_ in pts if cx - 20 <= px_ <= cx + lw + 20 and cy - 20 <= py_ <= cy + lh + 20)
+    lx, ly = min(corners, key=lambda c: clutter(*c))
+    panel = base.copy()
+    cv2.rectangle(panel, (lx, ly), (lx + lw, ly + lh), (20, 20, 20), -1)
+    cv2.addWeighted(panel, 0.65, base, 0.35, 0, base)
+    for i, (name, col) in enumerate(legend):
+        y = ly + 22 + 24 * i
+        cv2.line(base, (lx + 12, y), (lx + 48, y), col, 4)
+        cv2.putText(base, name, (lx + 58, y + 6), cv2.FONT_HERSHEY_SIMPLEX, 0.55, TEXT, 1, cv2.LINE_AA)
+    cv2.putText(base, f"{len(bowls)} targets, {fw:.0f} x {fh:.0f} m", (lx + 12, ly + lh - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1, cv2.LINE_AA)
     # altitude profile axes
     px0, px1, py0, py1 = 60, W - 20, top + map_h + 20, H - 30
     cv2.rectangle(base, (px0, py0), (px1, py1), (60, 60, 60), 1)
     for alt in (11, 40):
         y = int(py1 - (alt / 45.0) * (py1 - py0))
         cv2.line(base, (px0, y), (px1, y), (70, 70, 70), 1)
-        cv2.putText(base, f"{alt} m", (8, y + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (180, 180, 180), 1, cv2.LINE_AA)
+        cv2.putText(base, f"{alt} m", (8, y + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (180, 180, 180), 1, cv2.LINE_AA)
     t_end = t[-1]
 
     def prof_px(tt, z):
@@ -142,7 +155,7 @@ def main():
         cv2.circle(frame, prof_px(tt, z), 5, (255, 255, 255), -1)
         ph = phase(tt)
         cv2.putText(frame, f"t = {tt:5.0f} s   altitude {z:4.1f} m   {ph if ph != 'other' else 'transit'}", (px0, H - 8),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, TEXT, 1, cv2.LINE_AA)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, TEXT, 1, cv2.LINE_AA)
         cv2.imwrite(os.path.join(tmp, f"f{k:05d}.png"), frame)
     subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-framerate", str(a.fps), "-i", os.path.join(tmp, "f%05d.png"),
                     "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-movflags", "+faststart", a.out], check=True)
