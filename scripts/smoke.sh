@@ -8,6 +8,7 @@
 #   DETECTOR=yolo POSE=mavros scripts/smoke.sh   # real detector on the full-resolution camera (needs GPU + weights)
 #   RECORD=true scripts/smoke.sh     # also write follow-camera and annotated MP4s into the run dir
 #   MIN_RECALL=0 ...                 # do not fail on recall (real-detector result runs)
+#   CAMERA_HZ=0.5 ...                # survey camera at 0.5 Hz: half the GPU render load, a frame every 10 m at 5 m/s
 set -o pipefail   # no -u: the ROS setup scripts reference unset variables
 cd "$(dirname "$0")/.."
 source scripts/env.sh
@@ -60,7 +61,7 @@ pkill -x px4 2>/dev/null; pkill -x ruby 2>/dev/null; sleep 1
 thermal_monitor & TM=$!
 
 echo "smoke: starting sim ($WORLD, $MODEL, headless)"
-ros2 launch uav_dt_ros sim.launch.py world:="$WORLD" model:="$MODEL" headless:=true mavros:=true > "$LOGDIR/sim.log" 2>&1 &
+ros2 launch uav_dt_ros sim.launch.py world:="$WORLD" model:="$MODEL" headless:=true mavros:=true camera_hz:="${CAMERA_HZ:-}" > "$LOGDIR/sim.log" 2>&1 &
 LP=$!
 for i in $(seq 1 120); do grep -q "Got HEARTBEAT" "$LOGDIR/sim.log" 2>/dev/null && break; sleep 1; done
 grep -q "Got HEARTBEAT" "$LOGDIR/sim.log" || { echo "smoke: MAVROS never connected, see $LOGDIR/sim.log"; exit 1; }

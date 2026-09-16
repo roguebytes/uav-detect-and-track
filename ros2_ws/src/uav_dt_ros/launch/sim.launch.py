@@ -39,6 +39,18 @@ def setup(context, *args, **kwargs):
 
     world_file = os.path.join(root, "sim", "worlds", world + ".sdf")
     model_file = os.path.join(root, "sim", "models", model, "model.sdf")
+    camera_hz = LaunchConfiguration("camera_hz").perform(context)
+    if camera_hz:
+        # spawn a copy of the model with the survey camera at this rate: at 5 m/s, 0.5 Hz still gives a
+        # frame every 10 m under a 42 m footprint and halves the 12 MP render load on the GPU
+        import re
+        import tempfile
+        src = open(model_file).read()
+        src = re.sub(r"(<sensor name=\"survey_cam\".*?)<update_rate>[^<]*</update_rate>", rf"\1<update_rate>{camera_hz}</update_rate>", src, count=1, flags=re.S)
+        tmp = tempfile.NamedTemporaryFile("w", suffix=".sdf", prefix=f"{model}_", delete=False)
+        tmp.write(src)
+        tmp.close()
+        model_file = tmp.name
     px4_bin = os.path.join(px4_dir, "build", "px4_sitl_default", "bin", "px4")
     px4_rootfs = os.path.join(px4_dir, "build", "px4_sitl_default", "rootfs")
     px4_etc = os.path.join(px4_dir, "build", "px4_sitl_default", "etc")
@@ -98,6 +110,7 @@ def generate_launch_description():
         DeclareLaunchArgument("headless", default_value="true", description="server only with software rendering"),
         DeclareLaunchArgument("mavros", default_value="true", description="start MAVROS"),
         DeclareLaunchArgument("spawn_z", default_value="0.3"),
+        DeclareLaunchArgument("camera_hz", default_value="", description="override the survey camera's update rate, e.g. 0.5"),
         DeclareLaunchArgument("follow_cam", default_value="false",
                               description="spawn the live follow camera (third-person clips come from scripts/replay_follow.py instead)"),
         OpaqueFunction(function=setup),
