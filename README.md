@@ -22,15 +22,15 @@ against the world's ground truth.
 
 ## Results
 
-| | Sparse field (12 targets, 12.5 per ha) | Dense field (60 targets, 62.5 per ha) |
+| | Sparse field (12 targets, 9.4 per ha) | Dense field (60 targets, 47 per ha) |
 |---|---|---|
-| Survey recall / precision | 1.00 / 1.00 | 0.95 / 1.00 |
-| Targets found on the survey (TP / FP / FN) | 12 / 0 / 0 | 57 / 0 / 3 |
-| Verified true / rejected | 12 / 0 | 57 / 0 |
-| Verified recall / precision | 1.00 / 1.00 | 0.95 / 1.00 |
-| Geolocation error, mean / max (m) | 0.18 / 0.40 | 0.20 / 0.44 |
-| Mission time, takeoff to landing (s) | 239 | 591 |
-| Frames processed / inference per frame (s) | 169 / 0.72 | 235 / 0.72 |
+| Survey recall / precision | 1.00 / 1.00 | 0.98 / 0.98 |
+| Targets found on the survey (TP / FP / FN) | 12 / 0 / 0 | 59 / 1 / 1 |
+| Verified true / rejected | 12 / 0 | 58 / 1 |
+| Verified recall / precision | 1.00 / 1.00 | 0.97 / 1.00 |
+| Geolocation error, mean / max (m) | 0.21 / 0.35 | 0.20 / 0.41 |
+| Mission time, takeoff to landing (s) | 248 | 617 |
+| Frames processed / inference per frame (s) | 248 / 0.63 | 617 / 0.65 |
 
 Field 120 x 80 m, survey at 40 m and 5 m/s: two passes placed so the camera footprint, not the aircraft,
 reaches every edge of the field. Verify at 11 m with one descent and hops between candidates. Every second
