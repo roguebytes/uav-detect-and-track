@@ -3,15 +3,17 @@
 | Metric | Value |
 |---|---|
 | Bowls in world | 60 |
-| Frames processed | 265 |
-| Survey tracks (TP / FP / FN) | 60 (60 / 0 / 0) |
-| Survey recall | 1.00 |
+| Frames processed | 235 |
+| Survey tracks (TP / FP / FN) | 57 (57 / 0 / 3) |
+| Survey recall | 0.95 |
 | Survey precision | 1.00 |
-| Survey geolocation error, mean / max (m) | 0.48 / 0.65 |
-| Verified tracks (TP / FP / FN) | 60 (60 / 0 / 0) |
-| Verified recall | 1.00 |
+| Survey geolocation error, mean / max (m) | 0.20 / 0.44 |
+| Verified tracks (TP / FP / FN) | 57 (57 / 0 / 3) |
+| Verified recall | 0.95 |
 | Verified precision | 1.00 |
-| Verify geolocation error, mean (m) | 0.48 |
+| Verify geolocation error, mean (m) | 0.20 |
 | Rejected by verification | 0 |
-| Mission time (s) | 667.00 |
-| Mean inference per frame (s) | 0.60 |
+| Mission time (s) | 591.00 |
+| Mean inference per frame (s) | 0.72 |
+
+Missed bowl ids: [22, 50, 55]

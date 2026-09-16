@@ -22,18 +22,19 @@ against the world's ground truth.
 
 ## Results
 
-| | Sparse field (12 bowls, 12.5 per ha) | Dense field (60 bowls, 62.5 per ha) |
+| | Sparse field (12 targets, 12.5 per ha) | Dense field (60 targets, 62.5 per ha) |
 |---|---|---|
-| Survey recall / precision | 1.00 / 1.00 | 1.00 / 1.00 |
-| Bowls found on the survey (TP / FP / FN) | 12 / 0 / 0 | 60 / 0 / 0 |
-| Verified true / rejected | 12 / 0 | 60 / 0 |
-| Verified recall / precision | 1.00 / 1.00 | 1.00 / 1.00 |
-| Geolocation error, mean / max (m) | 0.45 / 0.56 | 0.48 / 0.65 |
-| Mission time, takeoff to landing (s) | 290 | 667 |
-| Frames processed / inference per frame (s) | 187 / 0.70 | 265 / 0.60 |
+| Survey recall / precision | 1.00 / 1.00 | 0.95 / 1.00 |
+| Targets found on the survey (TP / FP / FN) | 12 / 0 / 0 | 57 / 0 / 3 |
+| Verified true / rejected | 12 / 0 | 57 / 0 |
+| Verified recall / precision | 1.00 / 1.00 | 0.95 / 1.00 |
+| Geolocation error, mean / max (m) | 0.18 / 0.40 | 0.20 / 0.44 |
+| Mission time, takeoff to landing (s) | 239 | 591 |
+| Frames processed / inference per frame (s) | 169 / 0.72 | 235 / 0.72 |
 
-Field 120 x 80 m, survey at 40 m and 5 m/s with 30% side overlap, verify at 11 m with one descent and
-hops between candidates, every second frame processed at survey altitude. Ground truth from the
+Field 120 x 80 m, survey at 40 m and 5 m/s: two legs planned so the camera footprint, not the aircraft,
+reaches the field boundary. Verify at 11 m with one descent and hops between candidates. Every second
+frame processed at survey altitude. Ground truth from the
 world generator's manifest; a track counts as correct within 2 m of an unmatched bowl on the survey
 and within 0.75 m at verification. Full tables: `docs/results/sparse.md`, `docs/results/dense.md`.
 
