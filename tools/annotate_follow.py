@@ -110,7 +110,7 @@ def main():
             col = GREEN if hit else AMBER
             cv2.rectangle(frame, (u - half, v - half), (u + half, v + half), BLACK, 4)
             cv2.rectangle(frame, (u - half, v - half), (u + half, v + half), col, 2)
-        hud = f"{in_view} bowl{'s' if in_view != 1 else ''} in the camera's view, {found} detected"
+        hud = f"{in_view} target{'s' if in_view != 1 else ''} in the camera's view, {found} detected"
         cv2.putText(frame, hud, (16, H - 18), cv2.FONT_HERSHEY_SIMPLEX, 0.7, BLACK, 4, cv2.LINE_AA)
         cv2.putText(frame, hud, (16, H - 18), cv2.FONT_HERSHEY_SIMPLEX, 0.7, WHITE, 2, cv2.LINE_AA)
         for i, (name, col) in enumerate((("detected", GREEN), ("in view, not yet detected", AMBER))):

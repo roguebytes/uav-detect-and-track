@@ -68,7 +68,7 @@ def main():
         y = 24 + 24 * i
         cv2.line(base, (18, y), (58, y), col, 4)
         cv2.putText(base, name, (68, y + 6), cv2.FONT_HERSHEY_SIMPLEX, 0.6, TEXT, 1, cv2.LINE_AA)
-    cv2.putText(base, f"{len(bowls)} bowls, {fw:.0f} x {fh:.0f} m", (18, 24 + 24 * 3 + 4), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1, cv2.LINE_AA)
+    cv2.putText(base, f"{len(bowls)} targets, {fw:.0f} x {fh:.0f} m", (18, 24 + 24 * 3 + 4), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1, cv2.LINE_AA)
     # altitude profile axes
     px0, px1, py0, py1 = 60, W - 20, map_h + 20, H - 30
     cv2.rectangle(base, (px0, py0), (px1, py1), (60, 60, 60), 1)
