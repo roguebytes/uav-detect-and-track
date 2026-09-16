@@ -85,7 +85,7 @@ def main():
         return "other"
 
     W = a.width
-    map_h = int(W * (fh + 20) / (fw + 20))
+    map_h = 2 * (int(W * (fh + 20) / (fw + 20)) // 2)          # even, for yuv420p
     prof_h = 160
     H = map_h + prof_h
     margin = 10.0                                              # metres of grass beyond the field
