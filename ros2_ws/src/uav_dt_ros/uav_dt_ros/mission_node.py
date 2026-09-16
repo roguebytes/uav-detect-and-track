@@ -29,7 +29,7 @@ class MissionNode(Node):
         self.declare_parameters("", [
             ("field_w", 120.0), ("field_h", 80.0), ("survey_alt", 40.0), ("verify_alt", 11.0),
             ("side_overlap", 0.1), ("hfov_deg", 70.0), ("image_w", 4032), ("image_h", 3024),
-            ("dwell_s", 4.0), ("verify_radius", 0.75), ("verify_ratio", 0.5), ("max_verify", 0),
+            ("dwell_s", 4.0), ("verify_radius", 1.0), ("verify_ratio", 0.5), ("max_verify", 0),
             ("wp_tol", 1.5), ("tick_hz", 5.0), ("log_path", "runs/mission.jsonl"),
             ("tracks_topic", "/perception/tracks"), ("ground_points_topic", "/perception/ground_points"),
         ])
@@ -72,7 +72,8 @@ class MissionNode(Node):
         if self.mission.verdicts != self._last_verdicts:
             self._last_verdicts = dict(self.mission.verdicts)
             self.verdict_pub.publish(String(data=json.dumps(self._last_verdicts)))
-            self.get_logger().info(f"verdicts {self._last_verdicts}")
+            stats = getattr(self.mission, "dwell_stats", {})
+            self.get_logger().info(f"verdicts {self._last_verdicts} (frames, hits per track: {stats})")
         if self.mission.done:
             self.get_logger().info("mission done")
             self.log.close()

@@ -26,7 +26,7 @@ class State(Enum):
 
 class SurveyVerifyMission:
     def __init__(self, controller, waypoints, survey_alt: float, verify_alt: float, strategy,
-                 wp_tol: float = 1.5, verify_radius: float = 0.75, verify_ratio: float = 0.5,
+                 wp_tol: float = 1.5, verify_radius: float = 1.0, verify_ratio: float = 0.5,
                  max_verify: int | None = None, home=(0.0, 0.0), settle_s: float = 1.0,
                  dwell_min_frames: int = 3, dwell_max_s: float = 15.0):
         self.ctl, self.waypoints, self.survey_alt, self.verify_alt = controller, list(waypoints), survey_alt, verify_alt
@@ -89,7 +89,7 @@ class SurveyVerifyMission:
                     self._set(State.VERIFY, now)
                     self._next_step(now)
         elif self.state is State.VERIFY:
-            self._verify_tick(now, observations)
+            self._verify_tick(now, observations, tracks)
         elif self.state is State.RETURN:
             if self._at_target(now):
                 self.ctl.land(); self._set(State.LAND, now)
@@ -126,9 +126,14 @@ class SurveyVerifyMission:
             self.dwell_frames = self.dwell_hits = 0
             self._last_frame_key = None
 
-    def _verify_tick(self, now: float, observations):
+    def _verify_tick(self, now: float, observations, tracks=()):
         if self.dwell_until is not None:
             tid, x, y = self.current
+            # judge against the track's latest position: low-altitude sightings refine it well past
+            # the survey estimate the target was planned from
+            latest = next(((tx, ty) for t_id, tx, ty in tracks if t_id == tid), None)
+            if latest is not None:
+                x, y = latest
             key = tuple(round(v, 3) for pt in observations for v in pt) if observations is not None else None
             if observations is not None and key != self._last_frame_key:   # count each new frame once
                 self._last_frame_key = key
@@ -138,6 +143,8 @@ class SurveyVerifyMission:
             enough = self.dwell_frames >= self.dwell_min_frames
             if (now >= self.dwell_until and enough) or now >= self.dwell_deadline:
                 self.verdicts[tid] = self.dwell_frames > 0 and self.dwell_hits / self.dwell_frames >= self.verify_ratio
+                self.dwell_stats = getattr(self, "dwell_stats", {})
+                self.dwell_stats[tid] = (self.dwell_frames, self.dwell_hits)
                 self.dwell_until = None
                 self._next_step(now)
         elif self._at_target(now):

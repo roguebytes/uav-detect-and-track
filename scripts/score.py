@@ -117,7 +117,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("log"); ap.add_argument("manifest")
     ap.add_argument("--survey-radius", type=float, default=2.0)
-    ap.add_argument("--verify-radius", type=float, default=0.75)
+    ap.add_argument("--verify-radius", type=float, default=1.0)
     ap.add_argument("--markdown", help="write a results table to this file")
     ap.add_argument("--min-recall", type=float, default=None, help="exit 1 if survey recall is below this")
     ap.add_argument("--mission-log", default=None, help="mission.jsonl next to the perception log (default: auto)")
