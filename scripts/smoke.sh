@@ -53,7 +53,7 @@ cleanup() {
   [ -n "${LP:-}" ] && kill -INT "$LP" 2>/dev/null
   sleep 5
   pkill -x px4 2>/dev/null; pkill -x ruby 2>/dev/null
-  for p in $(pgrep -f 'parameter_bridge|perception_node|mission_node|mavros_node|ros_gz_sim/create' 2>/dev/null); do kill "$p" 2>/dev/null; done
+  for p in $(pgrep -f 'parameter_bridge|perception_node|mission_node|mavros_node|ros_gz_sim/create|record_trajectory|record_video|follow_cam_node' 2>/dev/null); do kill "$p" 2>/dev/null; done
 }
 trap cleanup EXIT
 # a stale PX4 makes the new one exit with "already running"
