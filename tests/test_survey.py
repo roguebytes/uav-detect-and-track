@@ -18,10 +18,13 @@ def test_lawnmower_passes_overlap_ten_percent_and_reach_the_boundary():
     xs = sorted({wp[0] for wp in wps}); ys = sorted({wp[1] for wp in wps})
     # leg ends: the footprint's leading edge reaches the field edge, the aircraft does not
     assert xs[0] == pytest.approx(-60 + along / 2) and xs[-1] == pytest.approx(60 - along / 2)
-    # passes 10% overlapped, centred on the field, covering its full width
+    # passes 10% overlapped from the near side: the first footprint touches that edge, the partial
+    # final pass overshoots the far side (paper section 3.2.4)
     assert len(ys) == 2 and ys[1] - ys[0] == pytest.approx(swath * 0.9)
-    assert ys[0] == pytest.approx(-ys[1])
-    assert ys[0] - swath / 2 <= -40 and ys[-1] + swath / 2 >= 40
+    assert ys[0] == pytest.approx(-40 + swath / 2)
+    assert ys[-1] + swath / 2 >= 40
+    cys = sorted({wp[1] for wp in lawnmower(120, 80, cam, 40.0, side_overlap=0.1, centre_passes=True)})
+    assert cys[0] == pytest.approx(-cys[1])                    # centred variant shares the overshoot
     assert wps[0][3] == 0.0 and wps[2][3] == math.pi          # alternating leg direction
     assert len(wps) == 2 * len(ys)
 

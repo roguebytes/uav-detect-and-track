@@ -17,16 +17,18 @@ def footprint(cam: CameraModel, altitude: float) -> tuple[float, float]:
 
 
 def lawnmower(field_w: float, field_h: float, cam: CameraModel, altitude: float, side_overlap: float = 0.1,
-              margin: float = 0.0, centre=(0.0, 0.0)) -> list[tuple[float, float, float, float]]:
+              margin: float = 0.0, centre=(0.0, 0.0), centre_passes: bool = False) -> list[tuple[float, float, float, float]]:
     """Waypoints (x, y, z, yaw) covering a field_w x field_h rectangle centred on `centre`.
 
-    Legs run east-west (along x). The camera footprint, not the aircraft, is what has to reach the
-    boundary: each leg ends when the footprint's leading edge touches the field edge, so the
-    endpoints are inset by half the along-track footprint. Parallel passes are spaced at
-    swath * (1 - side_overlap), the fewest passes whose combined footprint spans the field's width,
-    and the set is centred on the field so any overshoot beyond the sides is shared equally. Yaw
-    points the nose along each leg so the camera's along-track axis matches the body's. `margin`
-    widens the field before planning."""
+    Follows the sweep geometry of Loewenich et al. 2026, section 3.2.4: a pass spans only the
+    centres of its first and last camera footprints, so the leg endpoints are inset by half the
+    along-track footprint and the aircraft turns when the footprint's edge reaches the boundary.
+    Passes run from one side of the field, the first footprint touching that edge, spaced at
+    swath * (1 - side_overlap) (the paper's grid model uses one swath; 10% overlap is the mission
+    default), with ceil of the remaining width over the spacing further passes, so a partial final
+    pass may overshoot the far side. `centre_passes` shares that overshoot between both sides
+    instead. Legs run east-west (along x), yaw along each leg so the camera's along-track axis
+    matches the body's. `margin` widens the field before planning."""
     swath, along = footprint(cam, altitude)
     x0, x1 = centre[0] - field_w / 2 - margin, centre[0] + field_w / 2 + margin
     y0, y1 = centre[1] - field_h / 2 - margin, centre[1] + field_h / 2 + margin
@@ -35,8 +37,11 @@ def lawnmower(field_w: float, field_h: float, cam: CameraModel, altitude: float,
         xa = xb = (x0 + x1) / 2
     spacing = swath * (1.0 - side_overlap)
     n_legs = 1 + max(0, math.ceil(((y1 - y0) - swath) / spacing - 1e-9))
-    mid = (y0 + y1) / 2
-    ys = [mid + (i - (n_legs - 1) / 2) * spacing for i in range(n_legs)]
+    if centre_passes:
+        mid = (y0 + y1) / 2
+        ys = [mid + (i - (n_legs - 1) / 2) * spacing for i in range(n_legs)]
+    else:
+        ys = [y0 + swath / 2 + i * spacing for i in range(n_legs)]
     wps = []
     for i, y in enumerate(ys):
         if i % 2 == 0:
