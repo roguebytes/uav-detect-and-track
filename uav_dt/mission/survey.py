@@ -37,8 +37,10 @@ def lawnmower(field_w: float, field_h: float, cam: CameraModel, altitude: float,
         xa = xb = (x0 + x1) / 2
     spacing = swath * (1.0 - side_overlap)
     n_legs = 1 + max(0, math.ceil(((y1 - y0) - swath) / spacing - 1e-9))
-    if centre_passes:
-        mid = (y0 + y1) / 2
+    mid = (y0 + y1) / 2
+    if n_legs == 1:
+        ys = [mid]                                              # one pass covers the width: fly the midline
+    elif centre_passes:
         ys = [mid + (i - (n_legs - 1) / 2) * spacing for i in range(n_legs)]
     else:
         ys = [y0 + swath / 2 + i * spacing for i in range(n_legs)]
