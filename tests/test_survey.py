@@ -11,22 +11,24 @@ def test_footprint_at_40m():
     assert 55 < w < 57 and 41 < l < 43
 
 
-def test_lawnmower_passes_overlap_ten_percent_and_reach_the_boundary():
+def test_lawnmower_footprint_touches_every_edge():
     cam = CameraModel.dji_mini4pro_still()
-    wps = lawnmower(120, 80, cam, 40.0, side_overlap=0.1)
+    wps = lawnmower(120, 80, cam, 40.0)
     swath, along = footprint(cam, 40.0)
     xs = sorted({wp[0] for wp in wps}); ys = sorted({wp[1] for wp in wps})
     # leg ends: the footprint's leading edge reaches the field edge, the aircraft does not
     assert xs[0] == pytest.approx(-60 + along / 2) and xs[-1] == pytest.approx(60 - along / 2)
-    # passes 10% overlapped from the near side: the first footprint touches that edge, the partial
-    # final pass overshoots the far side (paper section 3.2.4)
-    assert len(ys) == 2 and ys[1] - ys[0] == pytest.approx(swath * 0.9)
-    assert ys[0] == pytest.approx(-40 + swath / 2)
-    assert ys[-1] + swath / 2 >= 40
-    cys = sorted({wp[1] for wp in lawnmower(120, 80, cam, 40.0, side_overlap=0.1, centre_passes=True)})
-    assert cys[0] == pytest.approx(-cys[1])                    # centred variant shares the overshoot
+    # outer passes: the footprint's side edge reaches the side of the field, two passes for 80 m
+    assert len(ys) == 2 and ys[0] == pytest.approx(-40 + swath / 2) and ys[-1] == pytest.approx(40 - swath / 2)
     assert wps[0][3] == 0.0 and wps[2][3] == math.pi          # alternating leg direction
     assert len(wps) == 2 * len(ys)
+
+
+def test_lawnmower_edge_aligned_follows_the_paper():
+    cam = CameraModel.dji_mini4pro_still()
+    swath, _ = footprint(cam, 40.0)
+    ys = sorted({wp[1] for wp in lawnmower(120, 80, cam, 40.0, side_overlap=0.1, edge_aligned=True)})
+    assert len(ys) == 2 and ys[0] == pytest.approx(-40 + swath / 2) and ys[1] - ys[0] == pytest.approx(swath * 0.9)
 
 
 def test_lawnmower_small_field_single_midline_leg():

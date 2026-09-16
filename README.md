@@ -32,8 +32,8 @@ against the world's ground truth.
 | Mission time, takeoff to landing (s) | 239 | 591 |
 | Frames processed / inference per frame (s) | 169 / 0.72 | 235 / 0.72 |
 
-Field 120 x 80 m, survey at 40 m and 5 m/s: passes 10% overlapped, each ending where the camera footprint,
-not the aircraft, reaches the field boundary. Verify at 11 m with one descent and hops between candidates. Every second
+Field 120 x 80 m, survey at 40 m and 5 m/s: two passes placed so the camera footprint, not the aircraft,
+reaches every edge of the field. Verify at 11 m with one descent and hops between candidates. Every second
 frame processed at survey altitude. Ground truth from the
 world generator's manifest; a track counts as correct within 2 m of an unmatched bowl on the survey
 and within 0.75 m at verification. Full tables: `docs/results/sparse.md`, `docs/results/dense.md`.

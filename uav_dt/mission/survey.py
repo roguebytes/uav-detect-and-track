@@ -16,19 +16,26 @@ def footprint(cam: CameraModel, altitude: float) -> tuple[float, float]:
     return width, length
 
 
-def lawnmower(field_w: float, field_h: float, cam: CameraModel, altitude: float, side_overlap: float = 0.1,
-              margin: float = 0.0, centre=(0.0, 0.0), centre_passes: bool = False) -> list[tuple[float, float, float, float]]:
+def lawnmower(field_w: float, field_h: float, cam: CameraModel, altitude: float, side_overlap: float = 0.3,
+              margin: float = 0.0, centre=(0.0, 0.0), edge_aligned: bool = False) -> list[tuple[float, float, float, float]]:
     """Waypoints (x, y, z, yaw) covering a field_w x field_h rectangle centred on `centre`.
 
-    Follows the sweep geometry of Loewenich et al. 2026, section 3.2.4: a pass spans only the
-    centres of its first and last camera footprints, so the leg endpoints are inset by half the
-    along-track footprint and the aircraft turns when the footprint's edge reaches the boundary.
-    Passes run from one side of the field, the first footprint touching that edge, spaced at
-    swath * (1 - side_overlap) (the paper's grid model uses one swath; 10% overlap is the mission
-    default), with ceil of the remaining width over the spacing further passes, so a partial final
-    pass may overshoot the far side. `centre_passes` shares that overshoot between both sides
-    instead. Legs run east-west (along x), yaw along each leg so the camera's along-track axis
-    matches the body's. `margin` widens the field before planning."""
+    The camera footprint, not the aircraft, is what has to reach the boundary (Loewenich et al.
+    2026, section 3.2.4: a pass spans only the centres of its first and last footprints). Each leg
+    therefore ends when the footprint's leading edge touches the field edge, with the endpoints
+    inset by half the along-track footprint.
+
+    Default placement (used for the demo): the first and last passes are inset by half the swath
+    so their footprints touch the two sides exactly, and the passes between are spread evenly at no
+    more than swath * (1 - side_overlap). The overlap between neighbours is then whatever the
+    even spacing gives, never less than side_overlap.
+
+    edge_aligned=True follows the paper's sweep model instead: passes from one side at exactly
+    swath * (1 - side_overlap), ceil of the remaining width over the spacing further passes, so a
+    partial final pass may overshoot the far side.
+
+    Legs run east-west (along x), yaw along each leg so the camera's along-track axis matches the
+    body's. `margin` widens the field before planning."""
     swath, along = footprint(cam, altitude)
     x0, x1 = centre[0] - field_w / 2 - margin, centre[0] + field_w / 2 + margin
     y0, y1 = centre[1] - field_h / 2 - margin, centre[1] + field_h / 2 + margin
@@ -40,10 +47,11 @@ def lawnmower(field_w: float, field_h: float, cam: CameraModel, altitude: float,
     mid = (y0 + y1) / 2
     if n_legs == 1:
         ys = [mid]                                              # one pass covers the width: fly the midline
-    elif centre_passes:
-        ys = [mid + (i - (n_legs - 1) / 2) * spacing for i in range(n_legs)]
-    else:
+    elif edge_aligned:
         ys = [y0 + swath / 2 + i * spacing for i in range(n_legs)]
+    else:
+        ya, yb = y0 + swath / 2, y1 - swath / 2                 # outer passes: footprints touch the sides
+        ys = [ya + (yb - ya) * i / (n_legs - 1) for i in range(n_legs)]
     wps = []
     for i, y in enumerate(ys):
         if i % 2 == 0:

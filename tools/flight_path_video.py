@@ -38,7 +38,7 @@ def main():
     ap.add_argument("--fps", type=int, default=30)
     ap.add_argument("--width", type=int, default=1280)
     ap.add_argument("--survey-alt", type=float, default=40.0)
-    ap.add_argument("--side-overlap", type=float, default=0.1, help="as flown, to reproduce the first survey waypoint")
+    ap.add_argument("--side-overlap", type=float, default=0.3, help="as flown, to reproduce the first survey waypoint")
     ap.add_argument("--wp-tol", type=float, default=2.5)
     a = ap.parse_args()
 
