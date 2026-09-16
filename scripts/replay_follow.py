@@ -23,6 +23,8 @@ import subprocess
 import sys
 import time
 
+import signal
+
 import numpy as np
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from uav_dt.video import camera_track  # noqa: E402
@@ -68,7 +70,7 @@ def main():
     try:
         # started paused: every step is commanded explicitly
         procs.append(subprocess.Popen(["gz", "sim", "-s", *([] if os.environ.get("REPLAY_GLX") else ["--headless-rendering"]), "-v", "2", world_file],
-                                      stdout=gz_log, stderr=subprocess.STDOUT))
+                                      stdout=gz_log, stderr=subprocess.STDOUT, start_new_session=True))
         for _ in range(60):                                   # wait for the world clock, up to 30 s
             time.sleep(0.5)
             if procs[0].poll() is not None:
@@ -95,7 +97,8 @@ def main():
             subprocess.run(["ros2", "run", "ros_gz_sim", "create", "-world", a.world, "-name", name,
                             "-file", model_file, "-z", "0.3"], check=True,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        setter = subprocess.Popen([gz_set_pose, a.world], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
+        setter = subprocess.Popen([gz_set_pose, a.world], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1,
+                                  start_new_session=True)
         procs.append(setter)
 
         def cmd(line):
@@ -123,7 +126,8 @@ def main():
             step()
         time.sleep(1)
         # Gazebo renders a camera only while something subscribes; the frames themselves come from the PNGs
-        sub = subprocess.Popen(["gz", "topic", "-e", "-t", "/follow_cam/image"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        sub = subprocess.Popen(["gz", "topic", "-e", "-t", "/follow_cam/image"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                               start_new_session=True)
         procs.append(sub)
         time.sleep(2)
         for _ in range(3):
@@ -165,16 +169,17 @@ def main():
             os.remove(os.path.join(frames_dir, f))
         print(f"wrote {out}: {len(pngs)} frames ({len(track)} poses for {t_end - a.start:.0f} s at {a.fps} fps)")
     finally:
+        # kill each child's whole process group: `ros2 run` and `gz` are wrappers whose real
+        # processes otherwise outlive them and pile up (32 orphaned bridges once brought the machine down)
         for p in procs:
             try:
-                p.send_signal(2)
+                os.killpg(p.pid, signal.SIGINT)
             except Exception:
                 pass
         time.sleep(2)
-        subprocess.run(["pkill", "-x", "ruby"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for p in procs:
             try:
-                p.kill()
+                os.killpg(p.pid, signal.SIGKILL)
             except Exception:
                 pass
 
