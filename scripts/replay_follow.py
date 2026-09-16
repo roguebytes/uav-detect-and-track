@@ -42,7 +42,8 @@ def main():
     ap.add_argument("--pitch-deg", type=float, default=20.0)
     ap.add_argument("--yaw-smoothing", type=float, default=0.15)
     ap.add_argument("--quad-model", default="x500_visual", help="x500_visual (with camera frustum) or x500_visual_plain")
-    ap.add_argument("--yaw-smoothing-note", help=argparse.SUPPRESS)
+    ap.add_argument("--hfov-deg", type=float, default=70.0, help="follow camera horizontal field of view")
+    ap.add_argument("--out", default=None, help="output MP4 (default <run>/replay_follow.mp4)")
     a = ap.parse_args()
     repo = os.environ.get("UAV_DT_REPO") or os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     traj = np.loadtxt(os.path.join(a.run, "trajectory.csv"), skiprows=1)
@@ -87,6 +88,7 @@ def main():
         cam_sdf = open(os.path.join(repo, "sim", "models", "follow_cam", "model.sdf")).read()
         cam_sdf = cam_sdf.replace("</clip>", f"</clip>\n          <save enabled=\"true\"><path>{frames_dir}</path></save>")
         cam_sdf = cam_sdf.replace("<update_rate>30</update_rate>", f"<update_rate>{a.fps}</update_rate>")
+        cam_sdf = re.sub(r"<horizontal_fov>[^<]*</horizontal_fov>", f"<horizontal_fov>{math.radians(a.hfov_deg):.6f}</horizontal_fov>", cam_sdf)
         cam_file = os.path.join(a.run, "replay_follow_cam.sdf")
         open(cam_file, "w").write(cam_sdf)
         for name, model_file in ((a.quad_model, os.path.join(repo, "sim", "models", a.quad_model, "model.sdf")), ("follow_cam", cam_file)):
@@ -154,7 +156,7 @@ def main():
         pngs = sorted((f for f in os.listdir(frames_dir) if f.endswith(".png")), key=lambda f: int(f.rsplit("_", 1)[1][:-4]))
         for i, f in enumerate(pngs):
             os.replace(os.path.join(frames_dir, f), os.path.join(frames_dir, f"frame_{i:06d}.png"))
-        out = os.path.join(a.run, "replay_follow.mp4")
+        out = a.out or os.path.join(a.run, "replay_follow.mp4")
         encoders = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"], capture_output=True, text=True).stdout
         codec = ["-c:v", "h264_nvenc", "-preset", "p6", "-cq", "22", "-b:v", "0"] if "h264_nvenc" in encoders else ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20"]
         subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-framerate", str(a.fps), "-i", os.path.join(frames_dir, "frame_%06d.png"),
