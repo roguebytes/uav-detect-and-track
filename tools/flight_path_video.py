@@ -85,15 +85,16 @@ def main():
         return "other"
 
     W = a.width
+    top = 110                                                   # header band for the legend, clear of the map
     map_h = 2 * (int(W * (fh + 20) / (fw + 20)) // 2)          # even, for yuv420p
     prof_h = 160
-    H = map_h + prof_h
+    H = top + map_h + prof_h
     margin = 10.0                                              # metres of grass beyond the field
     sx = W / (fw + 2 * margin)
     sy = map_h / (fh + 2 * margin)
 
     def to_px(x, y):
-        return int((x + fw / 2 + margin) * sx), int(map_h - (y + fh / 2 + margin) * sy)
+        return int((x + fw / 2 + margin) * sx), int(top + map_h - (y + fh / 2 + margin) * sy)
 
     base = np.full((H, W, 3), BG, np.uint8)
     cv2.rectangle(base, to_px(-fw / 2 - margin, fh / 2 + margin), to_px(fw / 2 + margin, -fh / 2 - margin), GRASS, -1)
@@ -106,9 +107,9 @@ def main():
         y = 24 + 24 * i
         cv2.line(base, (18, y), (58, y), col, 4)
         cv2.putText(base, name, (68, y + 6), cv2.FONT_HERSHEY_SIMPLEX, 0.6, TEXT, 1, cv2.LINE_AA)
-    cv2.putText(base, f"{len(bowls)} targets, {fw:.0f} x {fh:.0f} m", (18, 24 + 24 * 3 + 4), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1, cv2.LINE_AA)
+    cv2.putText(base, f"{len(bowls)} targets, {fw:.0f} x {fh:.0f} m field", (W - 330, 46), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1, cv2.LINE_AA)
     # altitude profile axes
-    px0, px1, py0, py1 = 60, W - 20, map_h + 20, H - 30
+    px0, px1, py0, py1 = 60, W - 20, top + map_h + 20, H - 30
     cv2.rectangle(base, (px0, py0), (px1, py1), (60, 60, 60), 1)
     for alt in (11, 40):
         y = int(py1 - (alt / 45.0) * (py1 - py0))
