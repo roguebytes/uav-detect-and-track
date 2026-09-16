@@ -16,8 +16,8 @@ def footprint(cam: CameraModel, altitude: float) -> tuple[float, float]:
     return width, length
 
 
-def lawnmower(field_w: float, field_h: float, cam: CameraModel, altitude: float, side_overlap: float = 0.3,
-              margin: float = 0.0, centre=(0.0, 0.0), edge_aligned: bool = False) -> list[tuple[float, float, float, float]]:
+def lawnmower(field_w: float, field_h: float, cam: CameraModel, altitude: float, side_overlap: float = 0.1,
+              margin: float = 0.0, centre=(0.0, 0.0), edge_aligned: bool = True) -> list[tuple[float, float, float, float]]:
     """Waypoints (x, y, z, yaw) covering a field_w x field_h rectangle centred on `centre`.
 
     The camera footprint, not the aircraft, is what has to reach the boundary (Loewenich et al.
@@ -25,14 +25,14 @@ def lawnmower(field_w: float, field_h: float, cam: CameraModel, altitude: float,
     therefore ends when the footprint's leading edge touches the field edge, with the endpoints
     inset by half the along-track footprint.
 
-    Default placement (used for the demo): the first and last passes are inset by half the swath
-    so their footprints touch the two sides exactly, and the passes between are spread evenly at no
-    more than swath * (1 - side_overlap). The overlap between neighbours is then whatever the
-    even spacing gives, never less than side_overlap.
-
-    edge_aligned=True follows the paper's sweep model instead: passes from one side at exactly
+    Default placement follows the paper's sweep model: passes from one side at exactly
     swath * (1 - side_overlap), ceil of the remaining width over the spacing further passes, so a
-    partial final pass may overshoot the far side.
+    partial final pass may overshoot the far side. A field whose width is swath + k * spacing
+    (106.4 m for two passes at 40 m with 10% overlap) gives a symmetric sweep with no overshoot,
+    which is how the demo worlds are sized.
+
+    edge_aligned=False instead insets the first and last passes by half the swath so their
+    footprints touch the two sides exactly, and spreads the passes between evenly.
 
     Legs run east-west (along x), yaw along each leg so the camera's along-track axis matches the
     body's. `margin` widens the field before planning."""

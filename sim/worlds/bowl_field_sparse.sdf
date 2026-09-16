@@ -61,18 +61,18 @@
       <direction>-0.4 0.3 -0.85</direction>
     </light>
     <include><uri>model://grass_ground</uri></include>
-    <include><name>bowl_000</name><uri>model://bowl</uri><pose>-41.682 25.71 0 0 0 0</pose></include>
-    <include><name>bowl_001</name><uri>model://bowl</uri><pose>30.07 -18.125 0 0 0 0</pose></include>
-    <include><name>bowl_002</name><uri>model://bowl</uri><pose>-0.52 -3.738 0 0 0 0</pose></include>
-    <include><name>bowl_003</name><uri>model://bowl</uri><pose>17.282 21.366 0 0 0 0</pose></include>
-    <include><name>bowl_004</name><uri>model://bowl</uri><pose>-46.3 -34.902 0 0 0 0</pose></include>
-    <include><name>bowl_005</name><uri>model://bowl</uri><pose>38.277 -4.975 0 0 0 0</pose></include>
-    <include><name>bowl_006</name><uri>model://bowl</uri><pose>29.9 -36.844 0 0 0 0</pose></include>
-    <include><name>bowl_007</name><uri>model://bowl</uri><pose>-6.226 16.394 0 0 0 0</pose></include>
-    <include><name>bowl_008</name><uri>model://bowl</uri><pose>-30.921 32.95 0 0 0 0</pose></include>
-    <include><name>bowl_009</name><uri>model://bowl</uri><pose>45.763 -34.736 0 0 0 0</pose></include>
-    <include><name>bowl_010</name><uri>model://bowl</uri><pose>-54.099 3.065 0 0 0 0</pose></include>
-    <include><name>bowl_011</name><uri>model://bowl</uri><pose>50.063 -8.791 0 0 0 0</pose></include>
+    <include><name>bowl_000</name><uri>model://bowl</uri><pose>-41.682 34.882 0 0 0 0</pose></include>
+    <include><name>bowl_001</name><uri>model://bowl</uri><pose>30.07 -24.591 0 0 0 0</pose></include>
+    <include><name>bowl_002</name><uri>model://bowl</uri><pose>-0.52 -5.071 0 0 0 0</pose></include>
+    <include><name>bowl_003</name><uri>model://bowl</uri><pose>17.282 28.988 0 0 0 0</pose></include>
+    <include><name>bowl_004</name><uri>model://bowl</uri><pose>-46.3 -47.354 0 0 0 0</pose></include>
+    <include><name>bowl_005</name><uri>model://bowl</uri><pose>38.277 -6.75 0 0 0 0</pose></include>
+    <include><name>bowl_006</name><uri>model://bowl</uri><pose>29.9 -49.989 0 0 0 0</pose></include>
+    <include><name>bowl_007</name><uri>model://bowl</uri><pose>-6.226 22.243 0 0 0 0</pose></include>
+    <include><name>bowl_008</name><uri>model://bowl</uri><pose>-30.921 44.705 0 0 0 0</pose></include>
+    <include><name>bowl_009</name><uri>model://bowl</uri><pose>45.763 -47.129 0 0 0 0</pose></include>
+    <include><name>bowl_010</name><uri>model://bowl</uri><pose>-54.099 4.158 0 0 0 0</pose></include>
+    <include><name>bowl_011</name><uri>model://bowl</uri><pose>50.063 -11.927 0 0 0 0</pose></include>
     <spherical_coordinates>
       <surface_model>EARTH_WGS84</surface_model>
       <world_frame_orientation>ENU</world_frame_orientation>

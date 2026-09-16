@@ -28,7 +28,7 @@ class MissionNode(Node):
         super().__init__("mission")
         self.declare_parameters("", [
             ("field_w", 120.0), ("field_h", 80.0), ("survey_alt", 40.0), ("verify_alt", 11.0),
-            ("side_overlap", 0.3), ("hfov_deg", 70.0), ("image_w", 4032), ("image_h", 3024),
+            ("side_overlap", 0.1), ("hfov_deg", 70.0), ("image_w", 4032), ("image_h", 3024),
             ("dwell_s", 4.0), ("verify_radius", 1.0), ("verify_ratio", 0.5), ("max_verify", 0),
             ("wp_tol", 1.5), ("tick_hz", 5.0), ("log_path", "runs/mission.jsonl"),
             ("tracks_topic", "/perception/tracks"), ("ground_points_topic", "/perception/ground_points"),

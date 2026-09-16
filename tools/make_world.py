@@ -1,7 +1,11 @@
 """Generate a Gazebo world of white bowls on grass plus a JSON ground-truth manifest.
 
-    python tools/make_world.py --name sparse --seed 1 --bowls 12 --field 120 80
-    python tools/make_world.py --name dense  --seed 2 --bowls 60 --field 120 80
+    python tools/make_world.py --name sparse --seed 1 --bowls 12
+    python tools/make_world.py --name dense  --seed 2 --bowls 60
+
+The default field, 120 x 106.4 m, is sized so that two survey passes at 40 m with 10% side overlap
+(56 m swath, 50.4 m spacing) cover it exactly with no overshoot, following the sweep model of the
+paper (section 3.2.4).
 
 Writes sim/worlds/bowl_field_<name>.sdf and sim/worlds/bowl_field_<name>.json.
 The JSON is the single source of truth for scoring. Positions are metres in the world
@@ -149,7 +153,7 @@ def main() -> None:
     ap.add_argument("--name", required=True, help="suffix for bowl_field_<name>")
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--bowls", type=int, default=12)
-    ap.add_argument("--field", type=float, nargs=2, default=(120.0, 80.0), metavar=("W", "H"), help="field size in metres, centred on the origin")
+    ap.add_argument("--field", type=float, nargs=2, default=(120.0, 106.4), metavar=("W", "H"), help="field size in metres, centred on the origin")
     ap.add_argument("--min-sep", type=float, default=2.0, help="minimum bowl spacing in metres")
     ap.add_argument("--out-dir", default="sim/worlds")
     a = ap.parse_args()

@@ -19,6 +19,10 @@ def setup(context, *a, **k):
     run_dir = os.path.join(root, "runs", L("run_name") or time.strftime("%Y%m%d_%H%M%S"))
     os.makedirs(run_dir, exist_ok=True)
     manifest = os.path.join(root, "sim", "worlds", L("world") + ".json")
+    import json
+    field_m = json.load(open(manifest))["field_m"]
+    field_w = float(L("field_w") or field_m[0])
+    field_h = float(L("field_h") or field_m[1])
     lite = L("model").endswith("_lite")
     perception_params = {"detector": L("detector"), "pose_source": L("pose_source"),
                          "weights": os.path.join(root, "models", "scratch_best.pt"),
@@ -41,7 +45,7 @@ def setup(context, *a, **k):
         perception = Node(package="uav_dt_ros", executable="perception_node", name="perception", output="screen",
                           parameters=[perception_params])
     mission = Node(package="uav_dt_ros", executable="mission_node", name="mission", output="screen",
-                   parameters=[{"field_w": float(L("field_w")), "field_h": float(L("field_h")),
+                   parameters=[{"field_w": field_w, "field_h": field_h,
                                 "survey_alt": float(L("survey_alt")), "verify_alt": float(L("verify_alt")),
                                 "dwell_s": float(L("dwell_s")), "max_verify": int(L("max_verify")),
                                 "image_w": 1008 if lite else 4032, "image_h": 756 if lite else 3024, "use_sim_time": True,
@@ -71,8 +75,8 @@ def generate_launch_description():
         DeclareLaunchArgument("stride_min_height", default_value="20", description="apply the stride only above this height (0 = everywhere)"),
         DeclareLaunchArgument("conf", default_value="0.25"),
         DeclareLaunchArgument("gt_miss_rate", default_value="0.0", description="oracle detector per-frame miss probability"),
-        DeclareLaunchArgument("field_w", default_value="120"),
-        DeclareLaunchArgument("field_h", default_value="80"),
+        DeclareLaunchArgument("field_w", default_value="", description="survey field width in m (default: the world manifest)"),
+        DeclareLaunchArgument("field_h", default_value="", description="survey field height in m (default: the world manifest)"),
         DeclareLaunchArgument("survey_alt", default_value="40"),
         DeclareLaunchArgument("verify_alt", default_value="11"),
         DeclareLaunchArgument("dwell_s", default_value="4"),
