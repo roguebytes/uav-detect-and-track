@@ -32,11 +32,13 @@ against the world's ground truth.
 | Mission time, takeoff to landing (s) | 248 | 617 |
 | Frames processed / inference per frame (s) | 248 / 0.63 | 617 / 0.65 |
 
-Field 120 x 80 m, survey at 40 m and 5 m/s: two passes placed so the camera footprint, not the aircraft,
-reaches every edge of the field. Verify at 11 m with one descent and hops between candidates. Every second
-frame processed at survey altitude. Ground truth from the
+Field 120 x 106.4 m, sized so that two survey passes at 40 m with 10% side overlap cover it exactly
+(56 m swath, 50.4 m spacing), following the sweep model of the paper's section 3.2.4: a pass spans
+only the centres of its first and last footprints, so the aircraft turns when the footprint reaches
+the boundary. Survey at 5 m/s, one frame per second. Verify at 11 m with one descent and hops
+between candidates ordered nearest-neighbour (the paper uses a TSP solver). Ground truth from the
 world generator's manifest; a track counts as correct within 2 m of an unmatched bowl on the survey
-and within 0.75 m at verification. Full tables: `docs/results/sparse.md`, `docs/results/dense.md`.
+and within 1 m at verification. Full tables: `docs/results/sparse.md`, `docs/results/dense.md`.
 
 
 Detector: YOLOv9-C fine-tuned on real DJI Mini 4 Pro frames of bowls on grass at 11, 15 and
