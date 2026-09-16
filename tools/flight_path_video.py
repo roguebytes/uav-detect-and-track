@@ -65,16 +65,16 @@ def main():
     t_verify_state = next((ts for ts, st in states if st == "verify"), None)
     t_legs = next((t[i] for i in range(len(t)) if t_survey_state is not None and t[i] >= t_survey_state
                    and math.hypot(xyz[i, 0] - wp0[0], xyz[i, 1] - wp0[1]) < a.wp_tol), t_survey_state)
-    # first clear drop below the survey altitude (the quad dips a metre or two when it brakes at the
-    # end of a leg, so require 5 m), then walk back to where that descent actually began
+    # the descent begins where the quad first sinks faster than 0.5 m/s (over a 1 s window) after
+    # the verify state starts; the 40 m transit to the first candidate stays transit
     t_descent = t_verify_state
-    i_low = next((i for i in range(len(t)) if t_verify_state is not None and t[i] >= t_verify_state
-                  and xyz[i, 2] < a.survey_alt - 5.0), None)
-    if i_low is not None:
-        i_start = i_low
-        while i_start > 0 and xyz[i_start - 1, 2] < a.survey_alt - 0.5 and t[i_start - 1] >= t_verify_state:
-            i_start -= 1
-        t_descent = t[i_start]
+    if t_verify_state is not None:
+        i0 = int(np.searchsorted(t, t_verify_state))
+        for i in range(i0, len(t)):
+            j = int(np.searchsorted(t, t[i] + 1.0))
+            if j < len(t) and (xyz[j, 2] - xyz[i, 2]) / max(t[j] - t[i], 1e-6) < -0.5:
+                t_descent = t[i]
+                break
 
     def phase(tt):
         st = state_at(tt)
