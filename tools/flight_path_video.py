@@ -3,18 +3,27 @@
 
     python3 tools/flight_path_video.py --run runs/real_sparse --world bowl_field_sparse --out docs/results/clips/flight_path.mp4 [--speed 8]
 
-Draws the field, the bowls, the path so far (survey in blue, verification pass in orange, transit
-and return in grey), the quad's current position, and an altitude profile along the bottom. The
-mission's state changes come from mission.jsonl. Rendered with OpenCV and encoded with ffmpeg.
+Draws the field, the targets, the path so far (survey legs in blue, verification pass in orange,
+transit and return in grey), the quad's current position, and an altitude profile along the bottom.
+The mission's state changes come from mission.jsonl, refined by the flight itself: the survey is
+blue only from the moment the quad reaches the first survey waypoint (the leg from the takeoff
+point to the field corner is transit), and the verification pass is orange from the start of the
+descent (the 40 m transit to the first candidate is transit). Rendered with OpenCV and encoded
+with ffmpeg.
 """
 import argparse
 import json
 import math
 import os
 import subprocess
+import sys
 
 import cv2
 import numpy as np
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from uav_dt.geolocate import CameraModel  # noqa: E402
+from uav_dt.mission.survey import lawnmower  # noqa: E402
 
 COL = {"survey": (220, 120, 40), "verify": (40, 140, 255), "other": (150, 150, 150)}   # BGR
 BG, GRASS, TEXT = (24, 24, 24), (46, 78, 40), (235, 235, 235)
@@ -28,6 +37,9 @@ def main():
     ap.add_argument("--speed", type=float, default=8.0, help="playback speed factor")
     ap.add_argument("--fps", type=int, default=30)
     ap.add_argument("--width", type=int, default=1280)
+    ap.add_argument("--survey-alt", type=float, default=40.0)
+    ap.add_argument("--side-overlap", type=float, default=0.3, help="as flown, to reproduce the first survey waypoint")
+    ap.add_argument("--wp-tol", type=float, default=2.5)
     a = ap.parse_args()
 
     traj = np.loadtxt(os.path.join(a.run, "trajectory.csv"), skiprows=1)
@@ -39,12 +51,30 @@ def main():
     bowls = [(b["x"], b["y"]) for b in manifest["bowls"]]
     fw, fh = manifest["field_m"]
 
-    def phase(tt):
+    def state_at(tt):
         cur = "init"
         for ts, st in states:
             if tt >= ts:
                 cur = st
-        return {"survey": "survey", "verify": "verify"}.get(cur, "other")
+        return cur
+
+    # the survey legs start when the quad reaches the first planned waypoint; the verification pass
+    # starts with the descent from survey altitude
+    wp0 = lawnmower(fw, fh, CameraModel.dji_mini4pro_still(), a.survey_alt, a.side_overlap)[0]
+    t_survey_state = next((ts for ts, st in states if st == "survey"), None)
+    t_verify_state = next((ts for ts, st in states if st == "verify"), None)
+    t_legs = next((t[i] for i in range(len(t)) if t_survey_state is not None and t[i] >= t_survey_state
+                   and math.hypot(xyz[i, 0] - wp0[0], xyz[i, 1] - wp0[1]) < a.wp_tol), t_survey_state)
+    t_descent = next((t[i] for i in range(len(t)) if t_verify_state is not None and t[i] >= t_verify_state
+                      and xyz[i, 2] < a.survey_alt - 1.0), t_verify_state)
+
+    def phase(tt):
+        st = state_at(tt)
+        if st == "survey" and t_legs is not None and tt >= t_legs:
+            return "survey"
+        if st == "verify" and t_descent is not None and tt >= t_descent:
+            return "verify"
+        return "other"
 
     W = a.width
     map_h = int(W * (fh + 20) / (fw + 20))
