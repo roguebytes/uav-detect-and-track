@@ -85,8 +85,9 @@ def setup(context, *args, **kwargs):
                   condition=IfCondition(LaunchConfiguration("mavros")))
 
     # order: gazebo, then spawn after 5 s, then PX4 once the spawn process exits, then bridge and MAVROS
-    after_spawn = RegisterEventHandler(OnProcessExit(target_action=spawn, on_exit=[px4, bridge, spawn_follow, follow,
-                                                                                    TimerAction(period=3.0, actions=[mavros])]))
+    with_follow = LaunchConfiguration("follow_cam").perform(context).lower() == "true"
+    after = [px4, bridge] + ([spawn_follow, follow] if with_follow else []) + [TimerAction(period=3.0, actions=[mavros])]
+    after_spawn = RegisterEventHandler(OnProcessExit(target_action=spawn, on_exit=after))
     return [gz, TimerAction(period=5.0, actions=[spawn]), after_spawn]
 
 
@@ -97,5 +98,7 @@ def generate_launch_description():
         DeclareLaunchArgument("headless", default_value="true", description="server only with software rendering"),
         DeclareLaunchArgument("mavros", default_value="true", description="start MAVROS"),
         DeclareLaunchArgument("spawn_z", default_value="0.3"),
+        DeclareLaunchArgument("follow_cam", default_value="false",
+                              description="spawn the live follow camera (third-person clips come from scripts/replay_follow.py instead)"),
         OpaqueFunction(function=setup),
     ])

@@ -49,8 +49,9 @@ def setup(context, *a, **k):
     actions = [perception, mission]
     if L("record") == "true":
         from launch.actions import ExecuteProcess
+        topics = ["/perception/annotated"] + (["/follow_cam/image"] if L("record_follow") == "true" else [])
         actions.append(ExecuteProcess(cmd=["python3", os.path.join(root, "scripts", "record_video.py"), "--out-dir", run_dir,
-                                           "--fps", L("record_fps"), "/follow_cam/image", "/perception/annotated"],
+                                           "--fps", L("record_fps"), *topics],
                                       output="screen", name="record_video"))
         actions.append(ExecuteProcess(cmd=["python3", os.path.join(root, "scripts", "record_trajectory.py"),
                                            "--out", os.path.join(run_dir, "trajectory.csv")],
@@ -79,5 +80,6 @@ def generate_launch_description():
         DeclareLaunchArgument("run_name", default_value=""),
         DeclareLaunchArgument("record", default_value="false", description="record follow-camera and annotated video to the run dir"),
         DeclareLaunchArgument("record_fps", default_value="30"),
+        DeclareLaunchArgument("record_follow", default_value="false", description="also record the live follow camera (needs sim.launch.py follow_cam:=true)"),
         OpaqueFunction(function=setup),
     ])

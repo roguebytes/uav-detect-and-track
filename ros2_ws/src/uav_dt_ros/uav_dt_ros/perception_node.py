@@ -61,7 +61,7 @@ class PerceptionNode(Node):
             ("gt_pixel_noise", 1.0),
             ("ground_z", 0.0),
             ("min_height_agl", 5.0),               # ignore frames below this: on the ground the nadir camera sees nothing useful
-            ("max_tilt_deg", 12.0),                # ignore frames taken while banking (turns reach 20 deg); cruise at 5 m/s is 5 to 8 deg
+            ("max_tilt_deg", 20.0),                # ignore frames taken while banking beyond the PX4 tilt limit; attitude is compensated exactly
             ("gate_m", 1.5),
             ("log_path", "runs/perception.jsonl"),
             ("publish_annotated", True),
