@@ -26,10 +26,13 @@ RUN mkdir -p /ws/src && git clone -q -b humble https://github.com/gazebosim/ros_
  && bash -c "source /opt/ros/humble/setup.bash && cd /ws && GZ_VERSION=garden colcon build --merge-install --parallel-workers 2 --cmake-args -DBUILD_TESTING=OFF" \
  && rm -rf /ws/build /ws/log /var/lib/apt/lists/*
 
-# PX4 SITL
-RUN git clone -q --recursive -b ${PX4_TAG} https://github.com/PX4/PX4-Autopilot.git /px4 \
+# PX4 SITL. A shallow clone, and only the binary, the ROMFS and the Gazebo models survive the
+# build: the object tree is several gigabytes and the CI runner's disk is small.
+RUN git clone -q --depth 1 --shallow-submodules --recursive -b ${PX4_TAG} https://github.com/PX4/PX4-Autopilot.git /px4 \
  && bash /px4/Tools/setup/ubuntu.sh --no-nuttx --no-sim-tools \
- && cd /px4 && make px4_sitl && rm -rf /px4/.git
+ && cd /px4 && make px4_sitl \
+ && find /px4/build/px4_sitl_default -mindepth 1 -maxdepth 1 ! -name bin ! -name etc ! -name rootfs -exec rm -rf {} + \
+ && rm -rf /px4/.git /px4/src /px4/platforms /px4/boards /px4/msg /px4/test /px4/cmake /root/.cache /var/lib/apt/lists/*
 
 # MAVROS from the pinned snapshot (see scripts/install_mavros.sh)
 COPY scripts/install_mavros.sh /tmp/install_mavros.sh
@@ -38,10 +41,11 @@ RUN bash /tmp/install_mavros.sh && rm -rf /var/lib/apt/lists/*
 # repo
 WORKDIR /repo
 COPY . /repo
-RUN python3 -m venv .venv && .venv/bin/pip install -q -r requirements.txt \
- && .venv/bin/pip install -q --index-url https://download.pytorch.org/whl/cpu torch torchvision \
+RUN python3 -m venv .venv && .venv/bin/pip install -q --no-cache-dir -r requirements.txt \
+ && .venv/bin/pip install -q --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch torchvision \
  && python3 tools/make_grass_texture.py --size 2048 \
- && bash -c "source scripts/env.sh && scripts/build_tools.sh && cd ros2_ws && colcon build --symlink-install"
+ && bash -c "source scripts/env.sh && scripts/build_tools.sh && cd ros2_ws && colcon build --symlink-install" \
+ && rm -rf ros2_ws/build ros2_ws/log /root/.cache
 
 ENV PX4_DIR=/px4 ROS_GZ_WS=/ws
 CMD ["bash", "-lc", "source scripts/env.sh && MAX_VERIFY=1 scripts/smoke.sh"]
