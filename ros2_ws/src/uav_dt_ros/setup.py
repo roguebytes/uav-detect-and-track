@@ -21,7 +21,7 @@ setup(
     install_requires=["setuptools"],
     zip_safe=True,
     maintainer="Frank Loewenich",
-    maintainer_email="frank.loewenich@gmail.com",
+    maintainer_email="roguebytes@users.noreply.github.com",
     description="Launch files and nodes for the UAV survey-and-verify bowl detection demo.",
     license="MIT",
     entry_points={

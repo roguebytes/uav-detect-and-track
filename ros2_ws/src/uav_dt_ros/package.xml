@@ -5,7 +5,7 @@
   <name>uav_dt_ros</name>
   <version>0.2.0</version>
   <description>ROS 2 launch files and nodes for the UAV survey-and-verify bowl detection demo (Gazebo, PX4 SITL, MAVROS).</description>
-  <maintainer email="frank.loewenich@gmail.com">Frank Loewenich</maintainer>
+  <maintainer email="roguebytes@users.noreply.github.com">Frank Loewenich</maintainer>
   <license>MIT</license>
 
   <exec_depend>rclpy</exec_depend>

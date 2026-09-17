@@ -121,4 +121,5 @@ Time-Efficient UAV Search Strategies for High-Recall Aerial Detection. *Remote S
 
 ## License
 
-MIT
+MIT. The replay quad models derive from PX4's x500 model under the BSD 3-Clause License, see
+`sim/models/THIRD_PARTY_NOTICES.md`.
