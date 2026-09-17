@@ -47,7 +47,7 @@ COPY . /repo
 RUN python3 -m venv .venv && .venv/bin/pip install -q --no-cache-dir -r requirements.txt \
  && .venv/bin/pip install -q --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch torchvision \
  && .venv/bin/python tools/make_grass_texture.py --size 2048 \
- && bash -c "source scripts/env.sh && scripts/build_tools.sh && cd ros2_ws && colcon build --symlink-install" \
+ && bash -c "source scripts/env.sh && scripts/build_tools.sh && cd ros2_ws && colcon build" \
  && rm -rf ros2_ws/build ros2_ws/log /root/.cache
 
 ENV PX4_DIR=/px4 ROS_GZ_WS=/ws

@@ -1,5 +1,6 @@
 # Style gate for the Python sources: PEP 8 via pycodestyle/pyflakes and PEP 257 docstrings via pydocstyle.
 line-length = 120
+exclude = ["ros2_ws/build", "ros2_ws/install", "ros2_ws/log", "build", ".venv", "runs"]
 target-version = "py310"
 
 [lint]
