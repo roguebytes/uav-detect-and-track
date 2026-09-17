@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Author: Frank Loewenich -->
+<!-- Author: Frank Loewenich. Variant of x500_visual, generated from PX4's x500_base, copyright PX4 Development Team, BSD 3-Clause, see sim/models/THIRD_PARTY_NOTICES.md. -->
 <sdf version='1.9'>
   <!-- The PX4 x500 airframe meshes with no motors, sensors or physics: a prop that scripts/replay_follow.py
        moves along a logged trajectory so the follow camera can be re-rendered smoothly after a mission.
