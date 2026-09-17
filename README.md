@@ -1,11 +1,11 @@
 # UAV detect-and-track: survey high, verify low
 
-A ROS 2 and Gazebo simulation of a small quadrotor that surveys a grass field at 40 m, detects
-white 16 cm target objects with an onboard YOLOv9-C detector, tracks and geolocates them, then descends
-once to 11 m and hops between the candidates to verify each one. It mirrors the flight profile
-from my Remote Sensing paper on time-efficient UAV search strategies (Loewenich et al. 2026), in
-which surveying high and verifying low cut mission cost by 46% in sparse fields, at a 22% penalty
-in dense ones, with the crossover at a target density of 0.48 per grid cell.
+An end-to-end autonomy stack for a small quadrotor, in ROS 2 and Gazebo, that flies the two-stage
+search profile from my Remote Sensing paper (Loewenich et al. 2026): survey a field at 40 m, detect
+and geolocate small target objects with a YOLOv9-C detector trained on real drone imagery, then
+descend once to 11 m and hop between the candidates to verify each one. PX4 flies the mission
+through MAVROS, the perception runs on the autopilot's own state estimate, and every run is scored
+against the world's ground truth.
 
 ![verification pass: the annotated nadir view during the descent and the first hops at 11 m](docs/results/verify.gif)
 
@@ -13,13 +13,30 @@ in dense ones, with the crossover at a target density of 0.48 per grid cell.
 > planning). The perception code is airframe-agnostic. The control action sits behind an interface
 > so a fixed-wing variant can follow. Public data only.
 
-## Problem
+## What it shows, and what it does not
 
-Small objects seen from survey altitude are a few pixels wide and easy to confuse, while low
-passes are slow. The paper's answer is a two-stage profile: one fast high pass to find
-candidates, one low pass to confirm them. This repo runs that profile end to end in simulation,
-from takeoff to landing, with a detector trained on real drone imagery, and scores the result
-against the world's ground truth.
+The paper argues, from a probabilistic model over target density and detector false-positive rate,
+that a fast high survey followed by low verification of the flagged spots beats a constant low
+survey in sparse fields (a 46% saving there, a 22% penalty in dense fields, crossover at a density
+of 0.48 per grid cell). That model and its decision table live in the companion repository listed
+under See also. This repository does not rerun it.
+
+What this repository shows is that the profile works as a flying system:
+
+- A real autopilot stack executes the sweep, the single descent and the hops from takeoff to
+  landing, within set speed and tilt limits.
+- The perception chain from pixels to ground coordinates, tiled detection, geolocation from the
+  autopilot's state estimate and a ground-plane tracker, finds the target objects from 40 m and
+  places them to within a few tens of centimetres.
+- The verification pass does its job: on the dense field it rejected the one false track the
+  survey had raised.
+- The mission time is compared against the paper's baseline, a constant survey of the whole field
+  at 11 m, flown on the same worlds with the same planner and speed limits.
+- Everything runs from a clean checkout, including a headless CI run.
+
+Each result below is a single flight, on rendered grass, with simulated sensors. It is a
+demonstration of the system, not a measurement of real-world recall or a statistical test of the
+paper's claim.
 
 ## Results
 
