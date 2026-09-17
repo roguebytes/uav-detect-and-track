@@ -7,9 +7,11 @@ descend once to 11 m and hop between the candidates to verify each one. PX4 flie
 through MAVROS, the perception runs on the autopilot's own state estimate, and every run is scored
 against the world's ground truth.
 
-The paper's deliverable is a decision table for mission planning. This repository is the step after
-it: the two-stage strategy as a mission a real autopilot flies, with the verification overheads that
-the paper's section 5.2 sets aside made measurable.
+The deliverable of that paper, "Fly High or Fly Low? Selecting Time-Efficient UAV Search Strategies
+for High-Recall Aerial Detection" ([Remote Sensing 18(18), 3129](https://doi.org/10.3390/rs18183129)),
+is a decision table for mission planning. This repository is the step after it: the two-stage
+strategy as a mission a real autopilot flies, with the verification overheads that the paper's
+section 5.2 sets aside made measurable.
 
 ![verification pass: the annotated nadir view during the descent and the first hops at 11 m](docs/results/verify.gif)
 
