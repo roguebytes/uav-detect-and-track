@@ -33,17 +33,18 @@ class SurveyVerifyMission:
     def __init__(self, controller, waypoints, survey_alt: float, verify_alt: float, strategy,
                  wp_tol: float = 1.5, verify_radius: float = 1.0, verify_ratio: float = 0.5,
                  max_verify: int | None = None, home=(0.0, 0.0), settle_s: float = 1.0,
-                 dwell_min_frames: int = 2, dwell_max_s: float = 15.0, verify: bool = True,
-                 verify_speed: float | None = 10.0, verify_acc: float | None = 4.0,
-                 verify_settle_s: float = 0.5):
+                 dwell_min_frames: int = 3, dwell_max_s: float = 15.0, verify: bool = True,
+                 verify_speed: float | None = None, verify_acc: float | None = None,
+                 verify_settle_s: float | None = None):
         """Store the plan and thresholds and start in the INIT state.
 
         With verify=False the mission returns home and lands straight after the survey, which is
         the constant-altitude baseline when the survey altitude is set to the verification altitude.
-        verify_speed and verify_acc are handed to the controller when the verification pass starts:
-        the survey speed is bounded by motion blur, the hops between candidates are not. The dwell
-        at each candidate ends after dwell_s seconds and dwell_min_frames perception frames, and
-        verify_settle_s replaces settle_s for the hops.
+        verify_speed and verify_acc, when set, are handed to the controller as the verification
+        pass starts, and verify_settle_s replaces settle_s for the hops. The defaults leave the
+        survey limits in place: faster hops with a shorter dwell save time but rejected real
+        targets in testing, so they are opt-in. The dwell at each candidate ends after dwell_s
+        seconds and dwell_min_frames perception frames.
         """
         self.ctl, self.waypoints, self.survey_alt, self.verify_alt = controller, list(waypoints), survey_alt, verify_alt
         self.strategy, self.wp_tol, self.verify_radius, self.verify_ratio = strategy, wp_tol, verify_radius, verify_ratio
@@ -108,7 +109,8 @@ class SurveyVerifyMission:
                     self.targets = self._plan_verify(tracks) if self.verify else []
                     self.steps = self.strategy.plan(self.targets, self.survey_alt, self.verify_alt) if self.targets else []
                     if self.targets:
-                        self.settle_s = self.verify_settle_s
+                        if self.verify_settle_s is not None:
+                            self.settle_s = self.verify_settle_s
                         if self.verify_speed is not None and self.verify_acc is not None:
                             self.ctl.set_limits(self.verify_speed, self.verify_acc)
                     self._set(State.VERIFY, now)

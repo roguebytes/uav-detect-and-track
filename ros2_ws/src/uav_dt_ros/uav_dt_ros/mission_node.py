@@ -35,7 +35,7 @@ class MissionNode(Node):
             ("field_w", 120.0), ("field_h", 80.0), ("survey_alt", 40.0), ("verify_alt", 11.0),
             ("side_overlap", 0.1), ("hfov_deg", 70.0), ("image_w", 4032), ("image_h", 3024),
             ("dwell_s", 4.0), ("verify_radius", 1.0), ("verify_ratio", 0.5), ("max_verify", 0), ("verify", True),
-            ("dwell_min_frames", 2), ("verify_speed", 10.0), ("verify_acc", 4.0), ("verify_settle_s", 0.5),
+            ("dwell_min_frames", 3), ("verify_speed", 0.0), ("verify_acc", 0.0), ("verify_settle_s", 0.0),
             ("wp_tol", 1.5), ("tick_hz", 5.0), ("log_path", "runs/mission.jsonl"),
             ("tracks_topic", "/perception/tracks"), ("ground_points_topic", "/perception/ground_points"),
         ])
@@ -49,8 +49,9 @@ class MissionNode(Node):
                                            verify_radius=float(g("verify_radius")), verify_ratio=float(g("verify_ratio")),
                                            max_verify=(int(g("max_verify")) or None), verify=bool(g("verify")),
                                            dwell_min_frames=int(g("dwell_min_frames")),
-                                           verify_speed=float(g("verify_speed")), verify_acc=float(g("verify_acc")),
-                                           verify_settle_s=float(g("verify_settle_s")))
+                                           verify_speed=float(g("verify_speed")) or None,
+                                           verify_acc=float(g("verify_acc")) or None,
+                                           verify_settle_s=float(g("verify_settle_s")) or None)
         self.tracks, self.observations = [], None
         self.create_subscription(Detection3DArray, g("tracks_topic"), self.on_tracks, 10)
         self.create_subscription(String, g("ground_points_topic"), self.on_ground_points, 10)
