@@ -23,7 +23,7 @@ WORLD="${WORLD:-bowl_field_sparse}"
 DETECTOR="${DETECTOR:-gt}"
 POSE="${POSE:-gz}"
 MAX_VERIFY="${MAX_VERIFY:-2}"
-DWELL="${DWELL:-3}"
+DWELL="${DWELL:-2}"
 TIMEOUT_S="${TIMEOUT_S:-600}"
 MODEL="${MODEL:-$([ "$DETECTOR" = gt ] && echo x500_nadir_cam_lite || echo x500_nadir_cam)}"
 RUN="${RUN_NAME:-smoke_$(date +%Y%m%d_%H%M%S)}"
@@ -73,7 +73,7 @@ echo "smoke: MAVROS connected after ${i}s"; sleep 5
 echo "smoke: starting perception ($DETECTOR, pose from $POSE) and mission (survey_alt=${SURVEY_ALT:-40}, verify=${VERIFY:-true}, max_verify=$MAX_VERIFY)"
 ros2 launch uav_dt_ros mission.launch.py world:="$WORLD" model:="$MODEL" detector:="$DETECTOR" pose_source:="$POSE" \
   max_verify:="$MAX_VERIFY" dwell_s:="$DWELL" run_name:="$RUN" record:="${RECORD:-false}" \
-  survey_alt:="${SURVEY_ALT:-40}" verify:="${VERIFY:-true}" \
+  survey_alt:="${SURVEY_ALT:-40}" verify:="${VERIFY:-true}" verify_speed:="${VERIFY_SPEED:-10}" \
   half:="${HALF:-true}" frame_stride:="${FRAME_STRIDE:-1}" stride_min_height:="${STRIDE_MIN_HEIGHT:-20}" > "$LOGDIR/mission.log" 2>&1 &
 MP=$!
 T0=$(date +%s)

@@ -53,6 +53,9 @@ class FlightController(ABC):
     def target(self) -> tuple[float, float, float] | None:
         """The current position target, or None when there is none."""
 
+    def set_limits(self, speed: float, acceleration: float) -> None:
+        """Change the horizontal speed and acceleration limits; autopilots without the knobs ignore it."""
+
 
 class MavrosPx4Controller(FlightController):
     """PX4 offboard control through MAVROS 2 on ROS 2 Humble.
@@ -149,6 +152,13 @@ class MavrosPx4Controller(FlightController):
             req.param_id = name
             req.value = ParameterValue(type=3, double_value=float(value))   # 3 = PARAMETER_DOUBLE -> MAV_PARAM_TYPE_REAL32
             self._param_futures[name] = self._param_cli.call_async(req)
+
+    def set_limits(self, speed, acceleration):
+        """Queue new MPC_XY_VEL_MAX and MPC_ACC_HOR values; the tick retries until the FCU confirms."""
+        for name, value in (("MPC_XY_VEL_MAX", float(speed)), ("MPC_ACC_HOR", float(acceleration))):
+            self.px4_params[name] = value
+            self._params_pending[name] = value
+            self._param_futures.pop(name, None)
 
     def _call_arm(self, value):
         from mavros_msgs.srv import CommandBool

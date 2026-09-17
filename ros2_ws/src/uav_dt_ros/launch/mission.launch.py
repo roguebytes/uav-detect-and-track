@@ -52,6 +52,8 @@ def setup(context, *a, **k):
                                 "survey_alt": float(L("survey_alt")), "verify_alt": float(L("verify_alt")),
                                 "dwell_s": float(L("dwell_s")), "max_verify": int(L("max_verify")),
                                 "verify": L("verify").lower() == "true",
+                                "dwell_min_frames": int(L("dwell_min_frames")), "verify_speed": float(L("verify_speed")),
+                                "verify_acc": float(L("verify_acc")),
                                 "image_w": 1008 if lite else 4032, "image_h": 756 if lite else 3024, "use_sim_time": True,
                                 "log_path": os.path.join(run_dir, "mission.jsonl")}])
     actions = [perception, mission]
@@ -84,7 +86,10 @@ def generate_launch_description():
         DeclareLaunchArgument("field_h", default_value="", description="survey field height in m (default: the world manifest)"),
         DeclareLaunchArgument("survey_alt", default_value="40"),
         DeclareLaunchArgument("verify_alt", default_value="11"),
-        DeclareLaunchArgument("dwell_s", default_value="4"),
+        DeclareLaunchArgument("dwell_s", default_value="2", description="minimum dwell per candidate in seconds"),
+        DeclareLaunchArgument("dwell_min_frames", default_value="2", description="perception frames a dwell must see"),
+        DeclareLaunchArgument("verify_speed", default_value="10", description="horizontal speed limit for the hops, m/s"),
+        DeclareLaunchArgument("verify_acc", default_value="4", description="horizontal acceleration limit for the hops"),
         DeclareLaunchArgument("max_verify", default_value="0", description="0 = verify every confirmed track"),
         DeclareLaunchArgument("verify", default_value="true",
                               description="false: land after the survey (constant-altitude baseline with survey_alt:=11)"),

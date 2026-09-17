@@ -40,6 +40,10 @@ class FakeController:
         self.tgt = (x, y, z)
         self.calls.append(("goto", x, y, z))
 
+    def set_limits(self, speed, acceleration):
+        """Record the limit change."""
+        self.calls.append(("limits", speed, acceleration))
+
     def land(self):
         """Disarm and clear the target."""
         self._armed = False
@@ -121,3 +125,22 @@ def test_survey_only_lands_without_verifying():
     run(m, [(1, 5.0, 1.0), (2, -8.0, 4.0)], lambda mission: ())
     assert [s for _, s in m.transitions] == ["takeoff", "survey", "verify", "return", "land", "done"]
     assert m.targets == [] and not [c for c in ctl.calls if c[0] == "goto" and c[3] < 11]
+
+
+def test_verification_pass_raises_the_speed_limits_once():
+    ctl = FakeController()
+    wps = [(-10, 0, 40, 0.0), (10, 0, 40, 0.0)]
+    m = SurveyVerifyMission(ctl, wps, 40, 11, QuadDescendVerify(dwell_s=1.0), settle_s=0.0, dwell_min_frames=1,
+                            verify_speed=10.0, verify_acc=4.0)
+    run(m, [(1, 5.0, 1.0)], lambda mission: [(5.0, 1.0)] if mission.dwell_until is not None else ())
+    limits = [c for c in ctl.calls if c[0] == "limits"]
+    assert limits == [("limits", 10.0, 4.0)]
+    assert ctl.calls.index(limits[0]) > ctl.calls.index(("goto", 10, 0, 40))   # after the last survey waypoint
+
+
+def test_baseline_never_changes_the_limits():
+    ctl = FakeController()
+    m = SurveyVerifyMission(ctl, [(-10, 0, 11, 0.0), (10, 0, 11, 0.0)], 11, 11, QuadDescendVerify(1.0),
+                            settle_s=0.0, verify=False)
+    run(m, [(1, 5.0, 1.0)], lambda mission: ())
+    assert not [c for c in ctl.calls if c[0] == "limits"]
