@@ -7,9 +7,9 @@ ones the results in the README were produced with.
 | Component | Version | Why this one |
 |---|---|---|
 | ROS 2 | Humble | The LTS that pairs with Ubuntu 22.04 |
-| Gazebo | Garden (gz-sim 7.9) | What PX4 1.15 targets. End of life since September 2024; Harmonic is the upgrade path (PX4 1.16 and a `GZ_VERSION=harmonic` ros_gz build) |
+| Gazebo | Garden (gz-sim 7.9) | What PX4 1.15 targets. End of life since September 2024. Harmonic is the upgrade path (PX4 1.16 and a `GZ_VERSION=harmonic` ros_gz build) |
 | ros_gz | humble branch, built from source with `GZ_VERSION=garden` | The apt `ros-humble-ros-gz` packages are built for Fortress and must not shadow this build |
-| PX4 | v1.15.4 SITL | Installed and flown before the project started; the control action sits behind an interface so an ArduPilot adapter can follow |
+| PX4 | v1.15.4 SITL | Installed and flown before the project started. The control action sits behind an interface so an ArduPilot adapter can follow |
 | MAVROS | 2.14.0 from the 2026-08-07 Humble snapshot | The live repository lost the MAVROS binaries when 2.15.1 failed to build on the farm (September 2026). `scripts/install_mavros.sh` pins only the MAVROS family to the snapshot |
 | Python | 3.10 venv, torch cu126, ultralytics 8.4.150 | See `requirements.txt` |
 
@@ -26,7 +26,7 @@ ones the results in the README were produced with.
 
 ## Environment
 
-`source scripts/env.sh` before any launch. It sources Humble, then the Garden ros_gz workspace, then this repo's package; sets `GZ_SIM_RESOURCE_PATH` to `sim/models` and `sim/worlds` ahead of PX4's models; and exports `UAV_DT_PYTHON` so the perception node runs in the venv while the rest of ROS uses the system interpreter.
+`source scripts/env.sh` before any launch. It sources Humble, then the Garden ros_gz workspace, then this repo's package. It sets `GZ_SIM_RESOURCE_PATH` to `sim/models` and `sim/worlds` ahead of PX4's models, and exports `UAV_DT_PYTHON` so the perception node runs in the venv while the rest of ROS uses the system interpreter.
 
 ## Checks
 
@@ -39,6 +39,6 @@ scripts/smoke.sh              # headless sim, oracle detector, about 3 to 5 minu
 
 ## Known machine issues
 
-- Gazebo cameras render only while a subscriber exists. `ros2 topic hz` on a 12 MP topic can take longer than its window to print; use `scripts/grab_frames.py`.
+- Gazebo cameras render only while a subscriber exists. `ros2 topic hz` on a 12 MP topic can take longer than its window to print. Use `scripts/grab_frames.py`.
 - A stale `px4` process makes the next launch fail with "PX4 server already running". `scripts/smoke.sh` kills leftovers first.
 - Without an NVIDIA driver, Gazebo renders on Mesa llvmpipe: the lite camera model works, the full 12 MP camera at 1 Hz does not. Keep the NVIDIA kernel modules and user space on the same driver series (580 was used here); a mismatch leaves `nvidia-smi` unable to talk to the driver.

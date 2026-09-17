@@ -10,7 +10,7 @@ in dense ones, with the crossover at a target density of 0.48 per grid cell.
 ![verification pass: the annotated nadir view at 11 m](docs/results/verify.gif)
 
 > Scope: a civilian aerial-robotics demo (search and rescue, conservation, agriculture, survey
-> planning). The perception code is airframe-agnostic; the control action sits behind an interface
+> planning). The perception code is airframe-agnostic. The control action sits behind an interface
 > so a fixed-wing variant can follow. Public data only.
 
 ## Problem
@@ -40,7 +40,7 @@ Field 120 x 106.4 m, sized so that two survey passes at 40 m with 10% side overl
 only the centres of its first and last footprints, so the aircraft turns when the footprint reaches
 the boundary. Survey at 5 m/s, one frame per second. Verify at 11 m with one descent and hops
 between candidates ordered nearest-neighbour (the paper uses a TSP solver). Ground truth from the
-world generator's manifest; a track counts as correct within 2 m of an unmatched bowl on the survey
+world generator's manifest. A track counts as correct within 2 m of an unmatched bowl on the survey
 and within 1 m at verification. Full tables: `docs/results/sparse.md`, `docs/results/dense.md`.
 
 Detector: YOLOv9-C fine-tuned on real DJI Mini 4 Pro frames of bowls on grass at 11, 15 and
@@ -60,7 +60,7 @@ perception node: tiled YOLO ─► pixel-to-ground geolocation ─►     Flight
                  duplicate merging) ─► tracks, verdicts, JSONL log ─► scripts/score.py
 ```
 
-- `uav_dt/`: detector, geolocation, tracker, pipeline, mission state machine, controller adapters. Numpy only apart from the detector; 28 unit tests.
+- `uav_dt/`: detector, geolocation, tracker, pipeline, mission state machine, controller adapters. Numpy only apart from the detector. 28 unit tests.
 - `ros2_ws/src/uav_dt_ros/`: `sim.launch.py` (Gazebo, spawn, PX4, MAVROS, bridges) and `mission.launch.py` (perception, mission, optional recording).
 - `sim/`: world generator with a JSON ground-truth manifest, camera and bowl models, procedural grass.
 - `scripts/`: `setup.sh`, `env.sh`, `smoke.sh`, `score.py`, `record_video.py`, `replay_follow.py`, `install_mavros.sh`.
@@ -74,7 +74,7 @@ A mission records the annotated nadir view live. The third-person clips are rend
 the follow camera, runs the world below real time so the renderer keeps up, and takes the frames
 from the camera's own PNG output rather than a topic, so no frame is dropped or repeated. The survey
 camera's field of view is drawn as a translucent cone ending at its footprint. `tools/flight_path_video.py` animates the flight path with
-the survey and the verification pass in different colours. The clips are not in git; they are
+the survey and the verification pass in different colours. The clips are not in git. They are
 published at https://loewenich.com.
 
 ```bash
@@ -99,10 +99,10 @@ python3 scripts/score.py runs/sparse/perception.jsonl sim/worlds/bowl_field_spar
 
 ## Scope and limitations
 
-- Simulation only, so far. The real airframes run ArduPilot; the MAVROS-based controller keeps the swap to an ArduPilot adapter small, but that is unflown.
+- Simulation only, so far. The real airframes run ArduPilot. The MAVROS-based controller keeps the swap to an ArduPilot adapter small, but that is unflown.
 - The camera is body-fixed. Frames tilted beyond 20 degrees are skipped, which a gimbal would make unnecessary.
 - Flat ground is assumed for geolocation.
-- The grass is a procedural texture; the detector was trained on real turf and transferred without retraining, but this is not a claim about real-world recall.
+- The grass is a procedural texture. The detector was trained on real turf and transferred without retraining, but this is not a claim about real-world recall.
 - The workstation's thermal limits shaped some choices (FP16 inference, a 1 Hz survey camera, optional frame skipping). See docs/setup.md.
 
 ## Tech
