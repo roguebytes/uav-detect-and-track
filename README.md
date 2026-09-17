@@ -93,7 +93,8 @@ A mission records the annotated nadir view live. The third-person clips are rend
 the follow camera, runs the world below real time so the renderer keeps up, and takes the frames
 from the camera's own PNG output rather than a topic, so no frame is dropped or repeated. The survey
 camera's field of view is drawn as a translucent cone ending at its footprint. `tools/flight_path_video.py` animates the flight path with
-the survey and the verification pass in different colours. The full clips are not in git. Two excerpts:
+the survey and the verification pass in different colours. The clips are generated with the
+scripts below from a recorded run. Two excerpts:
 
 ![survey at 40 m with the camera footprint drawn and detected targets boxed](docs/results/survey_follow.gif)
 
