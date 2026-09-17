@@ -1,7 +1,7 @@
 # UAV detect-and-track: survey high, verify low
 
 A ROS 2 and Gazebo simulation of a small quadrotor that surveys a grass field at 40 m, detects
-white 16 cm bowls with an onboard YOLOv9-C detector, tracks and geolocates them, then descends
+white 16 cm targets with an onboard YOLOv9-C detector, tracks and geolocates them, then descends
 once to 11 m and hops between the candidates to verify each one. It mirrors the flight profile
 from my Remote Sensing paper on time-efficient UAV search strategies (Loewenich et al. 2026), in
 which surveying high and verifying low cut mission cost by 46% in sparse fields, at a 22% penalty
@@ -40,10 +40,10 @@ Field 120 x 106.4 m, sized so that two survey passes at 40 m with 10% side overl
 only the centres of its first and last footprints, so the aircraft turns when the footprint reaches
 the boundary. Survey at 5 m/s, one frame per second. Verify at 11 m with one descent and hops
 between candidates ordered nearest-neighbour (the paper uses a TSP solver). Ground truth from the
-world generator's manifest. A track counts as correct within 2 m of an unmatched bowl on the survey
+world generator's manifest. A track counts as correct within 2 m of an unmatched target on the survey
 and within 1 m at verification. Full tables: `docs/results/sparse.md`, `docs/results/dense.md`.
 
-Detector: YOLOv9-C fine-tuned on real DJI Mini 4 Pro frames of bowls on grass at 11, 15 and
+Detector: YOLOv9-C fine-tuned on real DJI Mini 4 Pro frames of targets on grass at 11, 15 and
 40 m (Loewenich et al. 2026), run on 640 px tiles at native resolution, FP16 on an RTX 2070.
 Geolocation uses the autopilot's own position and attitude estimate through MAVROS, not the
 simulator's ground truth, so the errors above include estimator error.
@@ -62,7 +62,7 @@ perception node: tiled YOLO ─► pixel-to-ground geolocation ─►     Flight
 
 - `uav_dt/`: detector, geolocation, tracker, pipeline, mission state machine, controller adapters. Numpy only apart from the detector. 28 unit tests.
 - `ros2_ws/src/uav_dt_ros/`: `sim.launch.py` (Gazebo, spawn, PX4, MAVROS, bridges) and `mission.launch.py` (perception, mission, optional recording).
-- `sim/`: world generator with a JSON ground-truth manifest, camera and bowl models, procedural grass.
+- `sim/`: world generator with a JSON ground-truth manifest, camera and target models, procedural grass.
 - `scripts/`: `setup.sh`, `env.sh`, `smoke.sh`, `score.py`, `record_video.py`, `replay_follow.py`, `install_mavros.sh`.
 - `tools/`: world and texture generators, `flight_path_video.py` (top-down path animation), `annotate_follow.py`, `video_smoothness.py`.
 - `detect_track.py`: standalone detect-and-track CLI for recorded video, independent of ROS and the simulator.
