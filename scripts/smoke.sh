@@ -6,6 +6,7 @@
 #
 #   scripts/smoke.sh                 # sparse world, 2 verifications
 #   MAX_VERIFY=0 scripts/smoke.sh    # verify every track (slower)
+#   VERIFY=false SURVEY_ALT=11 ...   # constant-altitude baseline: survey the whole field at 11 m and land
 #   DETECTOR=yolo POSE=mavros scripts/smoke.sh   # real detector on the full-resolution camera (needs GPU + weights)
 #   RECORD=true scripts/smoke.sh     # also write follow-camera and annotated MP4s into the run dir
 #   MIN_RECALL=0 ...                 # do not fail on recall (real-detector result runs)
@@ -69,9 +70,10 @@ for i in $(seq 1 120); do grep -q "Got HEARTBEAT" "$LOGDIR/sim.log" 2>/dev/null 
 grep -q "Got HEARTBEAT" "$LOGDIR/sim.log" || { echo "smoke: MAVROS never connected, see $LOGDIR/sim.log"; exit 1; }
 echo "smoke: MAVROS connected after ${i}s"; sleep 5
 
-echo "smoke: starting perception ($DETECTOR, pose from $POSE) and mission (max_verify=$MAX_VERIFY)"
+echo "smoke: starting perception ($DETECTOR, pose from $POSE) and mission (survey_alt=${SURVEY_ALT:-40}, verify=${VERIFY:-true}, max_verify=$MAX_VERIFY)"
 ros2 launch uav_dt_ros mission.launch.py world:="$WORLD" model:="$MODEL" detector:="$DETECTOR" pose_source:="$POSE" \
   max_verify:="$MAX_VERIFY" dwell_s:="$DWELL" run_name:="$RUN" record:="${RECORD:-false}" \
+  survey_alt:="${SURVEY_ALT:-40}" verify:="${VERIFY:-true}" \
   half:="${HALF:-true}" frame_stride:="${FRAME_STRIDE:-1}" stride_min_height:="${STRIDE_MIN_HEIGHT:-20}" > "$LOGDIR/mission.log" 2>&1 &
 MP=$!
 T0=$(date +%s)

@@ -34,7 +34,7 @@ class MissionNode(Node):
         self.declare_parameters("", [
             ("field_w", 120.0), ("field_h", 80.0), ("survey_alt", 40.0), ("verify_alt", 11.0),
             ("side_overlap", 0.1), ("hfov_deg", 70.0), ("image_w", 4032), ("image_h", 3024),
-            ("dwell_s", 4.0), ("verify_radius", 1.0), ("verify_ratio", 0.5), ("max_verify", 0),
+            ("dwell_s", 4.0), ("verify_radius", 1.0), ("verify_ratio", 0.5), ("max_verify", 0), ("verify", True),
             ("wp_tol", 1.5), ("tick_hz", 5.0), ("log_path", "runs/mission.jsonl"),
             ("tracks_topic", "/perception/tracks"), ("ground_points_topic", "/perception/ground_points"),
         ])
@@ -46,7 +46,7 @@ class MissionNode(Node):
         self.mission = SurveyVerifyMission(self.ctl, wps, float(g("survey_alt")), float(g("verify_alt")),
                                            QuadDescendVerify(float(g("dwell_s"))), wp_tol=float(g("wp_tol")),
                                            verify_radius=float(g("verify_radius")), verify_ratio=float(g("verify_ratio")),
-                                           max_verify=(int(g("max_verify")) or None))
+                                           max_verify=(int(g("max_verify")) or None), verify=bool(g("verify")))
         self.tracks, self.observations = [], None
         self.create_subscription(Detection3DArray, g("tracks_topic"), self.on_tracks, 10)
         self.create_subscription(String, g("ground_points_topic"), self.on_ground_points, 10)

@@ -33,11 +33,15 @@ class SurveyVerifyMission:
     def __init__(self, controller, waypoints, survey_alt: float, verify_alt: float, strategy,
                  wp_tol: float = 1.5, verify_radius: float = 1.0, verify_ratio: float = 0.5,
                  max_verify: int | None = None, home=(0.0, 0.0), settle_s: float = 1.0,
-                 dwell_min_frames: int = 3, dwell_max_s: float = 15.0):
-        """Store the plan and thresholds and start in the INIT state."""
+                 dwell_min_frames: int = 3, dwell_max_s: float = 15.0, verify: bool = True):
+        """Store the plan and thresholds and start in the INIT state.
+
+        With verify=False the mission returns home and lands straight after the survey, which is
+        the constant-altitude baseline when the survey altitude is set to the verification altitude.
+        """
         self.ctl, self.waypoints, self.survey_alt, self.verify_alt = controller, list(waypoints), survey_alt, verify_alt
         self.strategy, self.wp_tol, self.verify_radius, self.verify_ratio = strategy, wp_tol, verify_radius, verify_ratio
-        self.max_verify, self.home, self.settle_s = max_verify, home, settle_s
+        self.max_verify, self.home, self.settle_s, self.verify = max_verify, home, settle_s, verify
         self.dwell_min_frames, self.dwell_max_s = dwell_min_frames, dwell_max_s
         self.state, self.wp_index = State.INIT, 0
         self.targets: list = []                # verify targets in visiting order: (id, x, y)
@@ -94,7 +98,7 @@ class SurveyVerifyMission:
                 if self.wp_index < len(self.waypoints):
                     self._goto_wp()
                 else:
-                    self.targets = self._plan_verify(tracks)
+                    self.targets = self._plan_verify(tracks) if self.verify else []
                     self.steps = self.strategy.plan(self.targets, self.survey_alt, self.verify_alt) if self.targets else []
                     self._set(State.VERIFY, now)
                     self._next_step(now)

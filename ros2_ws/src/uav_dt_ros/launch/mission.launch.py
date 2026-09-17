@@ -51,6 +51,7 @@ def setup(context, *a, **k):
                    parameters=[{"field_w": field_w, "field_h": field_h,
                                 "survey_alt": float(L("survey_alt")), "verify_alt": float(L("verify_alt")),
                                 "dwell_s": float(L("dwell_s")), "max_verify": int(L("max_verify")),
+                                "verify": L("verify").lower() == "true",
                                 "image_w": 1008 if lite else 4032, "image_h": 756 if lite else 3024, "use_sim_time": True,
                                 "log_path": os.path.join(run_dir, "mission.jsonl")}])
     actions = [perception, mission]
@@ -85,6 +86,8 @@ def generate_launch_description():
         DeclareLaunchArgument("verify_alt", default_value="11"),
         DeclareLaunchArgument("dwell_s", default_value="4"),
         DeclareLaunchArgument("max_verify", default_value="0", description="0 = verify every confirmed track"),
+        DeclareLaunchArgument("verify", default_value="true",
+                              description="false: land after the survey (constant-altitude baseline with survey_alt:=11)"),
         DeclareLaunchArgument("run_name", default_value=""),
         DeclareLaunchArgument("record", default_value="false", description="record follow-camera and annotated video to the run dir"),
         DeclareLaunchArgument("record_fps", default_value="30"),

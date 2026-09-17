@@ -112,3 +112,12 @@ def test_dwell_waits_for_frames_then_gives_up():
         m.tick(t, tracks, None)
         t += 0.5
     assert m.verdicts == {1: False} and t - start <= 6.5
+
+
+def test_survey_only_lands_without_verifying():
+    ctl = FakeController()
+    wps = [(-10, 0, 11, 0.0), (10, 0, 11, 0.0), (10, 5, 11, math.pi), (-10, 5, 11, math.pi)]
+    m = SurveyVerifyMission(ctl, wps, 11, 11, QuadDescendVerify(dwell_s=2.0), settle_s=0.0, verify=False)
+    run(m, [(1, 5.0, 1.0), (2, -8.0, 4.0)], lambda mission: ())
+    assert [s for _, s in m.transitions] == ["takeoff", "survey", "verify", "return", "land", "done"]
+    assert m.targets == [] and not [c for c in ctl.calls if c[0] == "goto" and c[3] < 11]
