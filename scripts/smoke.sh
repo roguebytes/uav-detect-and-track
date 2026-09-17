@@ -62,7 +62,8 @@ pkill -x px4 2>/dev/null; pkill -x ruby 2>/dev/null; sleep 1
 thermal_monitor & TM=$!
 
 echo "smoke: starting sim ($WORLD, $MODEL, headless)"
-ros2 launch uav_dt_ros sim.launch.py world:="$WORLD" model:="$MODEL" headless:=true mavros:=true camera_hz:="${CAMERA_HZ:-}" > "$LOGDIR/sim.log" 2>&1 &
+# ros2 launch rejects an empty argument value, so camera_hz is passed only when set
+ros2 launch uav_dt_ros sim.launch.py world:="$WORLD" model:="$MODEL" headless:=true mavros:=true ${CAMERA_HZ:+camera_hz:="$CAMERA_HZ"} > "$LOGDIR/sim.log" 2>&1 &
 LP=$!
 for i in $(seq 1 120); do grep -q "Got HEARTBEAT" "$LOGDIR/sim.log" 2>/dev/null && break; sleep 1; done
 grep -q "Got HEARTBEAT" "$LOGDIR/sim.log" || { echo "smoke: MAVROS never connected, see $LOGDIR/sim.log"; exit 1; }
