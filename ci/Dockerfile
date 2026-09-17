@@ -26,9 +26,10 @@ RUN mkdir -p /ws/src && git clone -q -b humble https://github.com/gazebosim/ros_
  && bash -c "source /opt/ros/humble/setup.bash && cd /ws && GZ_VERSION=garden colcon build --merge-install --parallel-workers 2 --cmake-args -DBUILD_TESTING=OFF" \
  && rm -rf /ws/build /ws/log /var/lib/apt/lists/*
 
-# PX4 SITL. A shallow clone, and only the binary, the ROMFS and the Gazebo models survive the
-# build: the object tree is several gigabytes and the CI runner's disk is small.
-RUN git clone -q --depth 1 --shallow-submodules --recursive -b ${PX4_TAG} https://github.com/PX4/PX4-Autopilot.git /px4 \
+# PX4 SITL. Only the binary, the ROMFS and the Gazebo models survive the build: the object tree is
+# several gigabytes and the CI runner's disk is small. The clone is not shallow because PX4's
+# version header script reads tags from the NuttX submodule.
+RUN git clone -q --recursive -b ${PX4_TAG} https://github.com/PX4/PX4-Autopilot.git /px4 \
  && bash /px4/Tools/setup/ubuntu.sh --no-nuttx --no-sim-tools \
  && cd /px4 && make px4_sitl \
  && find /px4/build/px4_sitl_default -mindepth 1 -maxdepth 1 ! -name bin ! -name etc ! -name rootfs -exec rm -rf {} + \
