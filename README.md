@@ -71,7 +71,10 @@ and within 1 m at verification. Full tables: `docs/results/sparse.md`, `docs/res
 Detector: YOLOv9-C fine-tuned on real DJI Mini 4 Pro frames of target objects on grass at 11, 15 and
 40 m (Loewenich et al. 2026), run on 640 px tiles at native resolution, FP16 on an RTX 2070.
 Geolocation uses the autopilot's own position and attitude estimate through MAVROS, not the
-simulator's ground truth, so the errors above include estimator error.
+simulator's ground truth, so the errors above include estimator error. The simulated camera uses the
+Mini 4 Pro's 4:3 still format (4032 x 3024, 70 degree horizontal field of view); the paper's frames
+are the 16:9 crop of the same sensor, so the swath and the number of passes match the paper and only
+the along-track footprint is a third longer here.
 
 ## How it works
 
@@ -85,7 +88,7 @@ perception node: tiled YOLO ─► pixel-to-ground geolocation ─►     Flight
                  duplicate merging) ─► tracks, verdicts, JSONL log ─► scripts/score.py
 ```
 
-- `uav_dt/`: detector, geolocation, tracker, pipeline, mission state machine, controller adapters. Numpy only apart from the detector. 28 unit tests.
+- `uav_dt/`: detector, geolocation, tracker, pipeline, mission state machine, controller adapters. Numpy only apart from the detector. 31 unit tests.
 - `ros2_ws/src/uav_dt_ros/`: `sim.launch.py` (Gazebo, spawn, PX4, MAVROS, bridges) and `mission.launch.py` (perception, mission, optional recording).
 - `sim/`: world generator with a JSON ground-truth manifest, camera and target object models, procedural grass.
 - `scripts/`: `setup.sh`, `env.sh`, `smoke.sh`, `score.py`, `record_video.py`, `replay_follow.py`, `install_mavros.sh`.
