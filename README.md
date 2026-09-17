@@ -91,7 +91,7 @@ python3 -m pytest && python3 smoke_test.py  # inside the venv that setup.sh crea
 scripts/smoke.sh                       # headless, oracle detector, about 4 minutes, no weights needed
 # real detector (weights in models/, see models/README.md), MAVROS pose, recording:
 DETECTOR=yolo POSE=mavros RECORD=true MAX_VERIFY=0 MIN_RECALL=0 RUN_NAME=sparse scripts/smoke.sh
-# CAMERA_HZ=0.5 halves the render and inference load; FRAME_STRIDE=2 skips every second survey frame
+# CAMERA_HZ=0.5 halves the render and inference load. FRAME_STRIDE=2 skips every second survey frame
 python3 scripts/score.py runs/sparse/perception.jsonl sim/worlds/bowl_field_sparse.json
 ```
 

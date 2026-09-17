@@ -41,4 +41,4 @@ scripts/smoke.sh              # headless sim, oracle detector, about 3 to 5 minu
 
 - Gazebo cameras render only while a subscriber exists. `ros2 topic hz` on a 12 MP topic can take longer than its window to print. Use `scripts/grab_frames.py`.
 - A stale `px4` process makes the next launch fail with "PX4 server already running". `scripts/smoke.sh` kills leftovers first.
-- Without an NVIDIA driver, Gazebo renders on Mesa llvmpipe: the lite camera model works, the full 12 MP camera at 1 Hz does not. Keep the NVIDIA kernel modules and user space on the same driver series (580 was used here); a mismatch leaves `nvidia-smi` unable to talk to the driver.
+- Without an NVIDIA driver, Gazebo renders on Mesa llvmpipe: the lite camera model works, the full 12 MP camera at 1 Hz does not. Keep the NVIDIA kernel modules and user space on the same driver series (580 was used here). A mismatch leaves `nvidia-smi` unable to talk to the driver.
