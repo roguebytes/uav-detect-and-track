@@ -54,12 +54,26 @@ cleanup() {
   [ -n "${MP:-}" ] && kill -INT "$MP" 2>/dev/null
   [ -n "${LP:-}" ] && kill -INT "$LP" 2>/dev/null
   sleep 5
+  kill_stack
+}
+
+# Kill every simulator and node process, escalating to SIGKILL: a headless gz server can ignore
+# SIGTERM on shutdown, and a survivor holds the old world so the next PX4 attaches to it and never
+# gets a position estimate.
+kill_stack() {
+  local pat='parameter_bridge|perception_node|mission_node|mavros_node|ros_gz_sim/create|record_trajectory|record_video|follow_cam_node|gz sim '
   pkill -x px4 2>/dev/null; pkill -x ruby 2>/dev/null
-  for p in $(pgrep -f 'parameter_bridge|perception_node|mission_node|mavros_node|ros_gz_sim/create|record_trajectory|record_video|follow_cam_node' 2>/dev/null); do kill "$p" 2>/dev/null; done
+  for p in $(pgrep -f "$pat" 2>/dev/null); do [ "$p" != "$$" ] && kill "$p" 2>/dev/null; done
+  sleep 2
+  pkill -9 -x px4 2>/dev/null; pkill -9 -x ruby 2>/dev/null
+  for p in $(pgrep -f "$pat" 2>/dev/null); do [ "$p" != "$$" ] && kill -9 "$p" 2>/dev/null; done
+  local left; left=$(pgrep -x ruby | wc -l)
+  [ "$left" -gt 0 ] && echo "smoke: warning, $left gz server(s) still alive after SIGKILL"
+  return 0
 }
 trap cleanup EXIT
-# a stale PX4 makes the new one exit with "already running"
-pkill -x px4 2>/dev/null; pkill -x ruby 2>/dev/null; sleep 1
+# a stale PX4 makes the new one exit with "already running", and a stale gz server captures it
+kill_stack; sleep 1
 thermal_monitor & TM=$!
 
 echo "smoke: starting sim ($WORLD, $MODEL, headless)"
