@@ -135,6 +135,14 @@ python3 scripts/score.py runs/sparse/perception.jsonl sim/worlds/bowl_field_spar
 - The grass is a procedural texture. The detector was trained on real turf and transferred without retraining, but this is not a claim about real-world recall.
 - The workstation's thermal limits shaped some choices (FP16 inference, a 1 Hz survey camera, optional frame skipping). See docs/setup.md.
 
+## Status
+
+September 2026: the two-stage mission flies end to end on both demo worlds with the real detector,
+and the CI smoke run is green. Planned next: repeated flights per world so the results carry
+spreads rather than single values, a cost comparison against the constant 11 m survey baseline,
+the released 40 m detector weights as the supported model, and an ArduPilot adapter ahead of the
+fixed-wing variant.
+
 ## Tech
 
 Python, numpy, PyTorch, Ultralytics, ROS 2 Humble, Gazebo Garden, PX4 SITL 1.15.4, MAVROS 2.14, ffmpeg.
