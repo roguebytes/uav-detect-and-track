@@ -7,7 +7,7 @@ from my Remote Sensing paper on time-efficient UAV search strategies (Loewenich 
 which surveying high and verifying low cut mission cost by 46% in sparse fields, at a 22% penalty
 in dense ones, with the crossover at a target density of 0.48 per grid cell.
 
-![verification pass: the annotated nadir view at 11 m](docs/results/verify.gif)
+![verification pass: the annotated nadir view during the descent and the first hops at 11 m](docs/results/verify.gif)
 
 > Scope: a civilian aerial-robotics demo (search and rescue, conservation, agriculture, survey
 > planning). The perception code is airframe-agnostic. The control action sits behind an interface
@@ -74,8 +74,12 @@ A mission records the annotated nadir view live. The third-person clips are rend
 the follow camera, runs the world below real time so the renderer keeps up, and takes the frames
 from the camera's own PNG output rather than a topic, so no frame is dropped or repeated. The survey
 camera's field of view is drawn as a translucent cone ending at its footprint. `tools/flight_path_video.py` animates the flight path with
-the survey and the verification pass in different colours. The clips are not in git. They are
-published at https://loewenich.com.
+the survey and the verification pass in different colours. The full clips are not in git. They
+are published at https://loewenich.com. Two excerpts:
+
+![survey at 40 m with the camera footprint drawn and detected targets boxed](docs/results/survey_follow.gif)
+
+![top-down flight path: survey in blue, verification in orange, transit in grey](docs/results/flight_path.gif)
 
 ```bash
 python3 scripts/replay_follow.py --run runs/sparse --world bowl_field_sparse --distance 16 --height 11 --pitch-deg 47
