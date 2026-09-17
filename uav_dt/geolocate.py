@@ -12,7 +12,10 @@ world -x. `CameraModel.mount` holds that rotation so the maths stays generic.
 
 Numpy only, so it is testable without ROS.
 """
+
 from __future__ import annotations
+
+__author__ = "Frank Loewenich"
 
 from dataclasses import dataclass, field
 import math
@@ -47,6 +50,7 @@ def rot_rpy(roll: float, pitch: float, yaw: float) -> np.ndarray:
 
 @dataclass
 class CameraModel:
+    """Pinhole camera with square pixels, a horizontal field of view and a mount rotation."""
     width: int
     height: int
     hfov: float                                   # radians
@@ -54,22 +58,27 @@ class CameraModel:
 
     @classmethod
     def dji_mini4pro_still(cls) -> "CameraModel":
+        """Camera model of a DJI Mini 4 Pro 4:3 still: 4032 x 3024 px, 70 degree horizontal field of view."""
         return cls(4032, 3024, math.radians(70.0))
 
     @property
     def fx(self) -> float:
+        """Focal length in pixels along the image width."""
         return (self.width / 2.0) / math.tan(self.hfov / 2.0)
 
     @property
     def fy(self) -> float:
+        """Focal length in pixels along the image height (square pixels)."""
         return self.fx
 
     @property
     def cx(self) -> float:
+        """Principal point column, the image centre."""
         return self.width / 2.0
 
     @property
     def cy(self) -> float:
+        """Principal point row, the image centre."""
         return self.height / 2.0
 
     def ground_sample_distance(self, height_agl: float) -> float:
@@ -85,7 +94,8 @@ def geolocate(cam: CameraModel, u: float, v: float, position, orientation_q, gro
     """World ENU point where the ray through pixel (u, v) meets the plane z = ground_z.
 
     position: (x, y, z) of the body in world ENU. orientation_q: body->world quaternion (x, y, z, w).
-    Returns None if the ray does not hit the ground (points at or above the horizon)."""
+    Returns None if the ray does not hit the ground (points at or above the horizon).
+    """
     r_wb = quat_to_rot(orientation_q)
     d_w = r_wb @ cam.mount @ cam.ray_sensor(u, v)
     p = np.asarray(position, dtype=float)
@@ -107,12 +117,14 @@ def project(cam: CameraModel, point, position, orientation_q):
 
 
 def enu_to_latlon(x: float, y: float, origin_lat: float, origin_lon: float) -> tuple[float, float]:
+    """Convert local ENU metres to latitude and longitude with a flat-earth approximation."""
     lat = origin_lat + math.degrees(y / EARTH_R)
     lon = origin_lon + math.degrees(x / (EARTH_R * math.cos(math.radians(origin_lat))))
     return lat, lon
 
 
 def latlon_to_enu(lat: float, lon: float, origin_lat: float, origin_lon: float) -> tuple[float, float]:
+    """Convert latitude and longitude to local ENU metres with a flat-earth approximation."""
     y = math.radians(lat - origin_lat) * EARTH_R
     x = math.radians(lon - origin_lon) * EARTH_R * math.cos(math.radians(origin_lat))
     return x, y

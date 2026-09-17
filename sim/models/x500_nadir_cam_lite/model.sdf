@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Author: Frank Loewenich -->
 <sdf version='1.9'>
   <!-- LITE VARIANT: quarter-resolution camera for the CI smoke run on software rendering. Same FOV, so the ground-truth detector sees the same footprint.
 

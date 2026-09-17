@@ -5,7 +5,10 @@ autopilot through the FlightController interface (MAVROS + PX4 offboard today), 
 verdicts on /mission/verdicts (std_msgs/String, JSON {track_id: bool}) which the perception
 node folds into its log for scoring. Mission state goes to /mission/state.
 """
+
 from __future__ import annotations
+
+__author__ = "Frank Loewenich"
 
 import json
 import math
@@ -18,13 +21,15 @@ from vision_msgs.msg import Detection3DArray
 
 from uav_dt.geolocate import CameraModel
 from uav_dt.mission.controller import MavrosPx4Controller
-from uav_dt.mission.state_machine import State, SurveyVerifyMission
+from uav_dt.mission.state_machine import SurveyVerifyMission
 from uav_dt.mission.survey import lawnmower, path_length
 from uav_dt.mission.verify import QuadDescendVerify
 
 
 class MissionNode(Node):
+    """Fly the survey-then-verify mission and publish its state and verdicts."""
     def __init__(self):
+        """Plan the survey, create the controller and mission, and start the tick timer."""
         super().__init__("mission")
         self.declare_parameters("", [
             ("field_w", 120.0), ("field_h", 80.0), ("survey_alt", 40.0), ("verify_alt", 11.0),
@@ -53,12 +58,15 @@ class MissionNode(Node):
         self.create_timer(1.0 / float(g("tick_hz")), self.tick)
 
     def on_tracks(self, msg: Detection3DArray):
+        """Store the confirmed tracks published by the perception node."""
         self.tracks = [(int(d.id), d.bbox.center.position.x, d.bbox.center.position.y) for d in msg.detections]
 
     def on_ground_points(self, msg: String):
+        """Store the ground points of the latest perception frame."""
         self.observations = [tuple(p) for p in json.loads(msg.data)]
 
     def tick(self):
+        """Advance the mission, publish state changes and verdicts, and exit when done."""
         now = self.get_clock().now().nanoseconds * 1e-9
         self.mission.tick(now, self.tracks, self.observations)
         st = self.mission.state.value
@@ -81,6 +89,7 @@ class MissionNode(Node):
 
 
 def main():
+    """Run the node until the mission completes or it is interrupted."""
     rclpy.init()
     node = MissionNode()
     try:

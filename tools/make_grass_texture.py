@@ -7,7 +7,10 @@ Layers: low-frequency colour patches (mown stripes and dry spots), mid-frequency
 high-frequency blade noise, all made tileable by wrapping the noise. Colours are picked to
 sit near the mean of real DJI Mini 4 Pro grass frames (green channel dominant, muted).
 """
+
 from __future__ import annotations
+
+__author__ = "Frank Loewenich"
 
 import argparse
 
@@ -30,10 +33,13 @@ def tileable_noise(size: int, scale: int, rng: np.random.Generator) -> np.ndarra
 def blade_strokes(size: int, count: int, rng: np.random.Generator) -> np.ndarray:
     """Short bright and dark strokes in random directions, wrapped so the tile stays seamless."""
     layer = np.zeros((size, size), dtype=np.float32)
-    xs = rng.integers(0, size, count); ys = rng.integers(0, size, count)
-    ang = rng.uniform(0, np.pi, count); ln = rng.uniform(3, 9, count); val = rng.uniform(-1, 1, count)
-    for x, y, a, l, v in zip(xs, ys, ang, ln, val):
-        dx, dy = int(round(np.cos(a) * l)), int(round(np.sin(a) * l))
+    xs = rng.integers(0, size, count)
+    ys = rng.integers(0, size, count)
+    ang = rng.uniform(0, np.pi, count)
+    ln = rng.uniform(3, 9, count)
+    val = rng.uniform(-1, 1, count)
+    for x, y, a, length, v in zip(xs, ys, ang, ln, val):
+        dx, dy = int(round(np.cos(a) * length)), int(round(np.sin(a) * length))
         for ox in (-size, 0, size):
             for oy in (-size, 0, size):
                 cv2.line(layer, (int(x) + ox, int(y) + oy), (int(x) + dx + ox, int(y) + dy + oy), float(v), 1, cv2.LINE_AA)
@@ -41,6 +47,7 @@ def blade_strokes(size: int, count: int, rng: np.random.Generator) -> np.ndarray
 
 
 def make_grass(size: int, seed: int) -> np.ndarray:
+    """Compose the grass texture from patch, clump, blade and grain layers."""
     rng = np.random.default_rng(seed)
     patches = tileable_noise(size, size // 5, rng)     # dry and lush patches, about 3 m across
     clumps = tileable_noise(size, max(8, size // 64), rng)   # grass clumps, about 25 cm
@@ -58,6 +65,7 @@ def make_grass(size: int, seed: int) -> np.ndarray:
 
 
 def main() -> None:
+    """Parse the command line and write the texture."""
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--out", default="sim/models/grass_ground/grass.png")
     ap.add_argument("--size", type=int, default=4096)

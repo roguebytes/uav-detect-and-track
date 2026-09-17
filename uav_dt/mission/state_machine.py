@@ -8,13 +8,17 @@ passes `observations`, the ground points of the detections in the latest frame, 
 counts frames in which one lies within `verify_radius` of the track. The verdict is
 hits / frames >= verify_ratio. Verdicts are exposed in `verdicts` for the perception log.
 """
+
 from __future__ import annotations
+
+__author__ = "Frank Loewenich"
 
 import math
 from enum import Enum
 
 
 class State(Enum):
+    """Mission phases in order of execution."""
     INIT = "init"
     TAKEOFF = "takeoff"
     SURVEY = "survey"
@@ -25,10 +29,12 @@ class State(Enum):
 
 
 class SurveyVerifyMission:
+    """Polled state machine: take off, survey, verify each candidate at low altitude, return, land."""
     def __init__(self, controller, waypoints, survey_alt: float, verify_alt: float, strategy,
                  wp_tol: float = 1.5, verify_radius: float = 1.0, verify_ratio: float = 0.5,
                  max_verify: int | None = None, home=(0.0, 0.0), settle_s: float = 1.0,
                  dwell_min_frames: int = 3, dwell_max_s: float = 15.0):
+        """Store the plan and thresholds and start in the INIT state."""
         self.ctl, self.waypoints, self.survey_alt, self.verify_alt = controller, list(waypoints), survey_alt, verify_alt
         self.strategy, self.wp_tol, self.verify_radius, self.verify_ratio = strategy, wp_tol, verify_radius, verify_ratio
         self.max_verify, self.home, self.settle_s = max_verify, home, settle_s
@@ -66,18 +72,22 @@ class SurveyVerifyMission:
         ordered, px, py = [], pos[0], pos[1]
         while todo:
             d, best = min((math.hypot(x - px, y - py), (tid, x, y)) for tid, x, y in todo)
-            ordered.append(best); todo.remove(best); px, py = best[1], best[2]
+            ordered.append(best)
+            todo.remove(best)
+            px, py = best[1], best[2]
         return ordered
 
     # ---- main loop ------------------------------------------------------------------------
     def tick(self, now: float, tracks=(), observations=()):
+        """Advance the mission by one step given the current tracks and observations."""
         if self.state is State.INIT:
             if self.ctl.connected():
                 self.ctl.takeoff(self.survey_alt)
                 self._set(State.TAKEOFF, now)
         elif self.state is State.TAKEOFF:
             if self.ctl.armed() and self._at_target(now):
-                self._goto_wp(); self._set(State.SURVEY, now)
+                self._goto_wp()
+                self._set(State.SURVEY, now)
         elif self.state is State.SURVEY:
             if self._at_target(now):
                 self.wp_index += 1
@@ -92,7 +102,8 @@ class SurveyVerifyMission:
             self._verify_tick(now, observations, tracks)
         elif self.state is State.RETURN:
             if self._at_target(now):
-                self.ctl.land(); self._set(State.LAND, now)
+                self.ctl.land()
+                self._set(State.LAND, now)
         elif self.state is State.LAND:
             if not self.ctl.armed():
                 self._set(State.DONE, now)
@@ -152,4 +163,5 @@ class SurveyVerifyMission:
 
     @property
     def done(self) -> bool:
+        """Whether the mission has landed and disarmed."""
         return self.state is State.DONE

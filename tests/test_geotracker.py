@@ -1,4 +1,5 @@
-import numpy as np
+__author__ = "Frank Loewenich"
+
 
 from uav_dt.geotracker import GeoTracker
 

@@ -1,3 +1,4 @@
+# Author: Frank Loewenich
 cmake_minimum_required(VERSION 3.16)
 project(gz_set_pose CXX)
 set(CMAKE_CXX_STANDARD 17)

@@ -8,7 +8,10 @@ Tracks are stationary targets, so the state is a running mean of observed positi
 
 Numpy only.
 """
+
 from __future__ import annotations
+
+__author__ = "Frank Loewenich"
 
 import math
 from dataclasses import dataclass, field
@@ -20,6 +23,7 @@ from .geometry import greedy_match
 
 @dataclass
 class GeoTrack:
+    """A stationary target tracked in world coordinates with a height-weighted mean position."""
     id: int
     x: float
     y: float
@@ -33,6 +37,7 @@ class GeoTrack:
 
     @property
     def confirmed(self) -> bool:
+        """Whether the track has been seen at least twice."""
         return self.hits >= 2
 
     @staticmethod
@@ -46,6 +51,7 @@ class GeoTrack:
         self.y = sum(o[2] * wi for o, wi in zip(self.observations, w)) / sum(w)
 
     def update(self, x: float, y: float, score: float, t: float, height_agl: float) -> None:
+        """Add an observation and recompute the position, score and timing."""
         self.observations.append((t, x, y, score, height_agl))
         self._recompute()
         self.score = max(self.score, score)
@@ -63,6 +69,7 @@ class GeoTracker:
 
     def __init__(self, gate_m: float = 1.5, high_thresh: float = 0.4, low_thresh: float = 0.1,
                  min_hits: int = 2, max_misses: int = 50, merge_m: float | None = None):
+        """Store the association gate, confidence thresholds and lifecycle limits."""
         self.gate_m, self.high_thresh, self.low_thresh = gate_m, high_thresh, low_thresh
         self.min_hits, self.max_misses = min_hits, max_misses
         self.merge_m = gate_m * 0.7 if merge_m is None else merge_m   # two tracks this close are one target
@@ -83,7 +90,8 @@ class GeoTracker:
 
         in_view: optional callable (x, y) -> bool saying whether a ground point is inside the
         current camera footprint. Tracks in view but unmatched count a miss; tracks out of view
-        are left alone, since not seeing them tells us nothing."""
+        are left alone, since not seeing them tells us nothing.
+        """
         dets = np.asarray(detections, dtype=np.float32).reshape(-1, 4)
         high = dets[dets[:, 2] >= self.high_thresh]
         low = dets[(dets[:, 2] >= self.low_thresh) & (dets[:, 2] < self.high_thresh)]
@@ -119,7 +127,8 @@ class GeoTracker:
 
         A bowl seen first from a tilted or distant frame can spawn a second track just outside the
         gate; as both accumulate observations their means converge. The track with more hits keeps
-        its id and inherits the other's observations and verdict."""
+        its id and inherits the other's observations and verdict.
+        """
         changed = True
         while changed:
             changed = False
@@ -141,8 +150,10 @@ class GeoTracker:
                     break
 
     def confirmed(self) -> list[GeoTrack]:
+        """Tracks seen at least `min_hits` times."""
         return [tr for tr in self.tracks if tr.hits >= self.min_hits]
 
     def get(self, track_id: int) -> GeoTrack | None:
+        """Look up a track by id, following merges."""
         track_id = self.merged.get(track_id, track_id)
         return next((tr for tr in self.tracks if tr.id == track_id), None)

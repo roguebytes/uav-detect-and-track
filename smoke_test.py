@@ -6,7 +6,10 @@ stable across passes.
 
     python smoke_test.py
 """
+
 from __future__ import annotations
+
+__author__ = "Frank Loewenich"
 
 import math
 
@@ -32,6 +35,7 @@ def lawnmower(x0, x1, y0, y1, spacing, step):
 
 
 def main():
+    """Fly the synthetic survey and assert the pipeline's tracks match the bowls."""
     cam = CameraModel.dji_mini4pro_still()
     det = GroundTruthDetector(cam, BOWLS, pixel_noise=1.0, miss_rate=0.1, false_positives=0, seed=3)
     pipe = GeoPipeline(det, cam, GeoTracker(gate_m=1.5))

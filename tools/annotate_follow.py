@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Overlay the bowls inside the survey camera's field of view onto a replayed follow-camera clip.
+r"""Overlay the bowls inside the survey camera's field of view onto a replayed follow-camera clip.
 
     python3 tools/annotate_follow.py --run runs/real_sparse --world bowl_field_sparse \\
         --clip docs/results/clips/survey_follow.mp4 --out docs/results/clips/survey_follow_annotated.mp4 \\
@@ -12,6 +12,8 @@ means the perception node reported a detection within a metre of that bowl withi
 --detect-window seconds of the frame time during the mission; amber means in view but not
 detected at that moment. The input clip is not modified.
 """
+
+__author__ = "Frank Loewenich"
 import argparse
 import json
 import math
@@ -30,6 +32,7 @@ GREEN, AMBER, WHITE, BLACK = (80, 220, 80), (40, 170, 255), (240, 240, 240), (0,
 
 
 def main():
+    """Parse the command line and write the annotated clip."""
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--run", required=True)
     ap.add_argument("--world", required=True)

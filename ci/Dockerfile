@@ -1,3 +1,4 @@
+# Author: Frank Loewenich
 # CI image for the headless smoke run: ROS 2 Humble, Gazebo Garden, ros_gz for Garden, PX4 v1.15.4
 # SITL, MAVROS from the pinned snapshot. Built once and cached; the smoke run itself takes minutes.
 FROM ros:humble-ros-base-jammy

@@ -13,16 +13,17 @@ Pose source: 'mavros' uses /mavros/local_position/pose (what a real aircraft has
 'gz' uses the Gazebo ground-truth model odometry bridged on /uav/gz_odom (CI, and for isolating
 perception error from estimator error).
 """
+
 from __future__ import annotations
+
+__author__ = "Frank Loewenich"
 
 import json
 import math
 import os
-import time
 from collections import deque
 
 import cv2
-import numpy as np
 import rclpy
 from cv_bridge import CvBridge
 from geometry_msgs.msg import PoseStamped
@@ -41,9 +42,11 @@ from uav_dt.pipeline import GeoPipeline
 
 
 class PerceptionNode(Node):
+    """Detect targets in the camera stream, geolocate them and maintain tracks."""
     def __init__(self):
+        """Declare parameters, open the log and subscribe to the camera and pose topics."""
         super().__init__("perception")
-        p = self.declare_parameters("", [
+        self.declare_parameters("", [
             ("image_topic", "/uav/camera"),
             ("camera_info_topic", "/uav/camera_info"),
             ("pose_source", "gz"),                 # gz | mavros
@@ -101,6 +104,7 @@ class PerceptionNode(Node):
 
     # ---- inputs -------------------------------------------------------------------------------
     def on_camera_info(self, msg: CameraInfo):
+        """Build the camera model from the first camera info message."""
         if self.cam is not None:
             return
         fx = msg.k[0]
@@ -110,16 +114,19 @@ class PerceptionNode(Node):
         self._build_pipeline()
 
     def on_odom(self, msg: Odometry):
+        """Record a Gazebo ground-truth pose sample."""
         p, q = msg.pose.pose.position, msg.pose.pose.orientation
         self._push_pose((p.x, p.y, p.z), (q.x, q.y, q.z, q.w), msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9)
 
     def on_verdicts(self, msg: String):
+        """Record the mission's verification verdicts on the matching tracks."""
         for tid, ok in json.loads(msg.data).items():
             tr = self.pipeline.tracker.get(int(tid)) if self.pipeline else None
             if tr is not None:
                 tr.verified = bool(ok)
 
     def on_pose(self, msg: PoseStamped):
+        """Record a MAVROS pose sample."""
         p, q = msg.pose.position, msg.pose.orientation
         self._push_pose((p.x, p.y, p.z), (q.x, q.y, q.z, q.w), msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9)
 
@@ -132,7 +139,8 @@ class PerceptionNode(Node):
 
         The image and the pose carry the same clock and the pose arrives at 50 Hz. Using the latest
         pose at callback time instead would put a 7 m/s aircraft up to 1.5 m off after a 0.2 s
-        pipeline delay, enough to break track association at the frame edge."""
+        pipeline delay, enough to break track association at the frame edge.
+        """
         h = self.pose_hist
         if not h:
             return None, None
@@ -170,6 +178,7 @@ class PerceptionNode(Node):
 
     # ---- main path ----------------------------------------------------------------------------
     def on_image(self, msg: Image):
+        """Run the pipeline on a camera frame, log the result and publish it."""
         if self.cam is not None and (msg.width, msg.height) != (self.cam.width, self.cam.height):
             # camera_info from another camera sharing the topic prefix: rebuild from the frame size and the hfov parameter
             self.get_logger().warn(f"camera_info said {self.cam.width}x{self.cam.height} but frames are {msg.width}x{msg.height}; "
@@ -205,6 +214,7 @@ class PerceptionNode(Node):
                                    f"low {getattr(self, 'skipped_low', 0)} stride {getattr(self, 'skipped_stride', 0)}")
 
     def publish(self, header, frame, res):
+        """Publish the detections, the tracks, the ground points and the annotated image."""
         d2 = Detection2DArray(header=header)
         for d in res.detections:
             det = Detection2D(header=header)
@@ -259,6 +269,7 @@ class PerceptionNode(Node):
 
 
 def main():
+    """Run the node until interrupted."""
     rclpy.init()
     node = PerceptionNode()
     try:

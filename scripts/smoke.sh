@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Author: Frank Loewenich
 # Headless end-to-end smoke run: Gazebo + PX4 SITL + MAVROS + perception (oracle detector, so no
 # weights or GPU) + mission (survey at 40 m, verify at 11 m) + scoring. Exits 0 only if the survey
 # found every bowl. Takes about 4 minutes on the sim machine with software rendering.

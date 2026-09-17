@@ -6,6 +6,8 @@
 
 Exercises MAVROS offboard on PX4 exactly as the mission node does. Exits 0 on success.
 """
+
+__author__ = "Frank Loewenich"
 import argparse
 import math
 import sys
@@ -18,6 +20,7 @@ from uav_dt.mission.controller import MavrosPx4Controller
 
 
 def main():
+    """Take off, fly a square and land through the flight controller, then exit with the result."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--alt", type=float, default=10.0)
     ap.add_argument("--side", type=float, default=40.0)
@@ -40,17 +43,22 @@ def main():
                 node.get_logger().info(f"{stage} leg {leg} mode {ctl.mode()} armed {ctl.armed()} pos "
                                        f"{p and tuple(round(v, 1) for v in p)}")
             if stage == "connect" and ctl.connected():
-                ctl.takeoff(a.alt); stage = "takeoff"
+                ctl.takeoff(a.alt)
+                stage = "takeoff"
             elif stage == "takeoff" and ctl.armed() and ctl.reached(1.0):
-                stage = "square"; ctl.goto(*legs[leg], a.alt, yaw=0.0)
+                stage = "square"
+                ctl.goto(*legs[leg], a.alt, yaw=0.0)
             elif stage == "square" and ctl.reached(1.5):
                 leg += 1
                 if leg < len(legs):
-                    x, y = legs[leg]; ctl.goto(x, y, a.alt, yaw=math.atan2(y - legs[leg - 1][1], x - legs[leg - 1][0]))
+                    x, y = legs[leg]
+                    ctl.goto(x, y, a.alt, yaw=math.atan2(y - legs[leg - 1][1], x - legs[leg - 1][0]))
                 else:
-                    ctl.land(); stage = "land"
+                    ctl.land()
+                    stage = "land"
             elif stage == "land" and not ctl.armed():
-                ok = True; break
+                ok = True
+                break
     finally:
         node.destroy_node()
         rclpy.shutdown()

@@ -7,40 +7,51 @@ ground). Calls are non-blocking: the caller polls `reached()` from its own timer
 MavrosPx4Controller  PX4 offboard mode through MAVROS (simulation now, and any PX4 aircraft).
                      A later MavrosArduPilotController will use GUIDED mode with the same calls.
 """
+
 from __future__ import annotations
+
+__author__ = "Frank Loewenich"
 
 import math
 from abc import ABC, abstractmethod
 
 
 class FlightController(ABC):
+    """Abstract flight controller: the mission's only interface to the autopilot."""
     @abstractmethod
-    def connected(self) -> bool: ...
+    def connected(self) -> bool:
+        """Whether the autopilot link is up and a position estimate is available."""
 
     @abstractmethod
     def position(self) -> tuple[float, float, float] | None:
         """Current local ENU position, or None before the estimator is up."""
 
     @abstractmethod
-    def armed(self) -> bool: ...
+    def armed(self) -> bool:
+        """Whether the aircraft is armed."""
 
     @abstractmethod
     def takeoff(self, altitude: float) -> None:
+        """Set a target above the current position and request offboard mode and arming."""
         """Arm and climb to `altitude` over the current position."""
 
     @abstractmethod
     def goto(self, x: float, y: float, z: float, yaw: float | None = None) -> None:
+        """Set a new position target and optionally a yaw."""
         """Fly to local ENU (x, y, z). Yaw in radians (ENU, 0 = east), None keeps the current yaw."""
 
     @abstractmethod
-    def land(self) -> None: ...
+    def land(self) -> None:
+        """Land at the current position."""
 
     def reached(self, tol: float = 1.0) -> bool:
+        """Whether the current position is within `tol` metres of the target."""
         p, t = self.position(), self.target()
         return p is not None and t is not None and math.dist(p, t) < tol
 
     @abstractmethod
-    def target(self) -> tuple[float, float, float] | None: ...
+    def target(self) -> tuple[float, float, float] | None:
+        """The current position target, or None when there is none."""
 
 
 class MavrosPx4Controller(FlightController):
@@ -51,6 +62,7 @@ class MavrosPx4Controller(FlightController):
     """
 
     def __init__(self, node, setpoint_hz: float = 20.0, ns: str = "/mavros"):
+        """Create the MAVROS subscriptions, publishers, service clients and the setpoint timer."""
         from geometry_msgs.msg import PoseStamped
         from mavros_msgs.msg import State
         from mavros_msgs.srv import CommandBool, CommandTOL, ParamSetV2, SetMode
@@ -105,14 +117,16 @@ class MavrosPx4Controller(FlightController):
     def _call_mode(self, mode):
         from mavros_msgs.srv import SetMode
         if self._mode_cli.service_is_ready():
-            req = SetMode.Request(); req.custom_mode = mode
+            req = SetMode.Request()
+            req.custom_mode = mode
             self._mode_cli.call_async(req)
 
     def _send_params(self):
         """Set PX4 params through MAVROS, retrying until the FCU confirms each one.
 
         MAVROS refuses sets until its initial parameter pull has finished, which takes longer than
-        our takeoff, so a single fire-and-forget request silently fails."""
+        our takeoff, so a single fire-and-forget request silently fails.
+        """
         from mavros_msgs.srv import ParamSetV2
         from rcl_interfaces.msg import ParameterValue
         if not self._params_pending or not self._param_cli.service_is_ready():
@@ -139,26 +153,33 @@ class MavrosPx4Controller(FlightController):
     def _call_arm(self, value):
         from mavros_msgs.srv import CommandBool
         if self._arm_cli.service_is_ready():
-            req = CommandBool.Request(); req.value = value
+            req = CommandBool.Request()
+            req.value = value
             self._arm_cli.call_async(req)
 
     # ---- FlightController ------------------------------------------------------------------
     def connected(self):
+        """Whether MAVROS reports a connection and a pose has arrived."""
         return self._state is not None and self._state.connected and self._pose is not None
 
     def position(self):
+        """Latest local ENU position from MAVROS."""
         return self._pose
 
     def armed(self):
+        """Whether MAVROS reports the aircraft armed."""
         return bool(self._state and self._state.armed)
 
     def mode(self):
+        """The autopilot's current flight mode name."""
         return self._state.mode if self._state else ""
 
     def target(self):
+        """The current position target."""
         return self._target
 
     def takeoff(self, altitude):
+        """Set a target above the current position and request offboard mode and arming."""
         x, y, _ = self._pose
         self._yaw = getattr(self, "_yaw_now", 0.0)
         self._target = (float(x), float(y), float(altitude))
@@ -166,12 +187,13 @@ class MavrosPx4Controller(FlightController):
         self._pending_offboard, self._pending_arm = True, True
 
     def goto(self, x, y, z, yaw=None):
+        """Set a new position target and optionally a yaw."""
         if yaw is not None:
             self._yaw = float(yaw)
         self._target = (float(x), float(y), float(z))
 
     def land(self):
-        from mavros_msgs.srv import CommandTOL
+        """Stop the setpoint stream and request the autopilot's land mode."""
         self._pending_offboard = self._pending_arm = False
         self._target = None
         self._call_mode("AUTO.LAND")

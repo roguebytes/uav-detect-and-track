@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Author: Frank Loewenich -->
 <sdf version='1.9'>
   <!--
     PX4 x500 quad (from the PX4 gz models, found via GZ_SIM_RESOURCE_PATH) plus a survey camera

@@ -1,22 +1,28 @@
-"""Start the simulation stack: Gazebo (our world), the x500 with the nadir survey camera,
-PX4 SITL attached to that model, MAVROS, the ros_gz bridges for the camera, clock and the ground-truth model odometry (/uav/gz_odom).
+"""Start the simulation stack.
+
+Gazebo on our world, the x500 with the nadir survey camera, PX4 SITL attached to that model,
+MAVROS, and the ros_gz bridges for the camera, the clock and the ground-truth model odometry
+(/uav/gz_odom).
 
     ros2 launch uav_dt_ros sim.launch.py world:=bowl_field_sparse headless:=true
 
 PX4 runs in standalone mode and attaches to the model we spawn by name, so nothing in the PX4
 tree is modified. Requires `source scripts/env.sh` (sets PX4_DIR and GZ_SIM_RESOURCE_PATH).
 """
+
+__author__ = "Frank Loewenich"
 import os
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, RegisterEventHandler, TimerAction, OpaqueFunction
-from launch.conditions import IfCondition, UnlessCondition
+from launch.conditions import IfCondition
 from launch.event_handlers import OnProcessExit
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
 def repo_root() -> str:
+    """Locate the repository root from UAV_DT_REPO or by walking up from this file."""
     # ros2_ws/install/uav_dt_ros/share/uav_dt_ros -> repo; fall back to the env var set by scripts/env.sh
     env = os.environ.get("UAV_DT_REPO")
     if env:
@@ -30,6 +36,7 @@ def repo_root() -> str:
 
 
 def setup(context, *args, **kwargs):
+    """Build the Gazebo, spawn, PX4, bridge and MAVROS actions from the launch arguments."""
     root = repo_root()
     px4_dir = os.environ.get("PX4_DIR", os.path.expanduser("~/PX4-Autopilot"))
     world = LaunchConfiguration("world").perform(context)
@@ -104,6 +111,7 @@ def setup(context, *args, **kwargs):
 
 
 def generate_launch_description():
+    """Declare the launch arguments and defer to `setup` for the actions."""
     return LaunchDescription([
         DeclareLaunchArgument("world", default_value="bowl_field_sparse", description="world name under sim/worlds"),
         DeclareLaunchArgument("model", default_value="x500_nadir_cam", description="model dir under sim/models"),

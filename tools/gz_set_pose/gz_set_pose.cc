@@ -1,3 +1,4 @@
+// Author: Frank Loewenich
 // Persistent Gazebo client for the replay renderer. Reads commands from stdin:
 //   <model> x y z qx qy qz qw   set a model's world pose (blocks until the request is answered)
 //   step N                      step the paused world by N iterations (blocks until answered)

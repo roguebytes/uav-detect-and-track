@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Author: Frank Loewenich
 # One-shot setup on Ubuntu 22.04 for the simulation stack. Idempotent; rerun after a git pull.
 # Steps that need root are printed and run with sudo; everything else runs as the user.
 # See docs/setup.md for what each step does and the pinned versions.

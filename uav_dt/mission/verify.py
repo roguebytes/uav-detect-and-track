@@ -6,12 +6,16 @@ The quad descends once at the first target, then flies between targets at the ve
 as in the paper's survey-high, verify-low profile. A fixed wing would loiter at the verify
 altitude instead, which is a later strategy on the same interface.
 """
+
 from __future__ import annotations
+
+__author__ = "Frank Loewenich"
 
 from abc import ABC, abstractmethod
 
 
 class VerifyStrategy(ABC):
+    """How an airframe inspects the candidate tracks at the verify altitude."""
     @abstractmethod
     def plan(self, targets, survey_alt: float, verify_alt: float) -> list[tuple]:
         """targets: ordered list of (track_id, x, y). Returns the step list for the whole pass."""
@@ -21,9 +25,11 @@ class QuadDescendVerify(VerifyStrategy):
     """Descend once over the first target, then hop between targets at the verify altitude, dwelling at each."""
 
     def __init__(self, dwell_s: float = 4.0):
+        """Store the dwell time per target."""
         self.dwell_s = dwell_s
 
     def plan(self, targets, survey_alt, verify_alt):
+        """Plan one descent, then a hop and a dwell at every target."""
         steps = []
         for i, (tid, x, y) in enumerate(targets):
             if i == 0:
@@ -37,4 +43,5 @@ class FixedWingLoiterVerify(VerifyStrategy):
     """Placeholder for the fixed-wing variant: loiter around each target at the verify altitude."""
 
     def plan(self, targets, survey_alt, verify_alt):
+        """Not implemented yet."""
         raise NotImplementedError("fixed-wing loiter verify is a later step; see the spec")

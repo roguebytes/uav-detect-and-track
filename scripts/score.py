@@ -9,7 +9,10 @@ radius. A bowl matches at most one track, so duplicate tracks on one bowl count 
 positives. Reports recall, precision, geolocation error and mission time, and writes an
 optional Markdown table for docs/results.
 """
+
 from __future__ import annotations
+
+__author__ = "Frank Loewenich"
 
 import argparse
 import json
@@ -23,7 +26,8 @@ def load_log(path, survey_end=None):
 
     survey_end: time at which the survey finished (from mission.jsonl). Tracks first confirmed
     after it were spawned during the low pass and are not survey results; they are dropped. The
-    verdict recorded later on a surviving track is kept."""
+    verdict recorded later on a surviving track is kept.
+    """
     frames = [json.loads(line) for line in open(path) if line.strip()]
     if not frames:
         sys.exit(f"no frames in {path}")
@@ -50,6 +54,7 @@ def survey_end_from_mission(path):
 
 
 def greedy_match(tracks, bowls, radius):
+    """Pair tracks with bowls by increasing distance, each used at most once, within `radius`."""
     pairs = sorted(
         ((math.hypot(t["x"] - b["x"], t["y"] - b["y"]), ti, bi) for ti, t in enumerate(tracks) for bi, b in enumerate(bowls))
     )
@@ -59,11 +64,14 @@ def greedy_match(tracks, bowls, radius):
             break
         if ti in used_t or bi in used_b:
             continue
-        used_t.add(ti); used_b.add(bi); matches.append((ti, bi, d))
+        used_t.add(ti)
+        used_b.add(bi)
+        matches.append((ti, bi, d))
     return matches
 
 
 def score(frames, tracks, bowls, survey_radius, verify_radius):
+    """Compute survey and verification recall, precision, geolocation error and timing."""
     out = {"bowls": len(bowls), "frames": len(frames), "mission_time_s": frames[-1]["t"] - frames[0]["t"]}
     # a track's log time is the image time; mission.jsonl times are ROS clock, same sim clock
     survey = greedy_match(tracks, bowls, survey_radius)
@@ -93,10 +101,12 @@ def score(frames, tracks, bowls, survey_radius, verify_radius):
 
 
 def fmt(x):
+    """Format a value for the Markdown table."""
     return "n/a" if isinstance(x, float) and math.isnan(x) else (f"{x:.2f}" if isinstance(x, float) else str(x))
 
 
 def markdown(res, world):
+    """Render the scores as a Markdown table."""
     rows = [("Bowls in world", res["bowls"]), ("Frames processed", res["frames"]),
             ("Survey tracks (TP / FP / FN)", f"{res['survey']['tracks']} ({res['survey']['tp']} / {res['survey']['fp']} / {res['survey']['fn']})"),
             ("Survey recall", res["survey"]["recall"]), ("Survey precision", res["survey"]["precision"]),
@@ -114,8 +124,10 @@ def markdown(res, world):
 
 
 def main():
+    """Parse the command line, score a run and optionally write the Markdown table."""
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("log"); ap.add_argument("manifest")
+    ap.add_argument("log")
+    ap.add_argument("manifest")
     ap.add_argument("--survey-radius", type=float, default=2.0)
     ap.add_argument("--verify-radius", type=float, default=1.0)
     ap.add_argument("--markdown", help="write a results table to this file")

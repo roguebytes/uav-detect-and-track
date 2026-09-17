@@ -1,14 +1,16 @@
+__author__ = "Frank Loewenich"
+
 import math
 
 import pytest
 
 from uav_dt.geolocate import CameraModel
-from uav_dt.mission.survey import footprint, lawnmower, path_length
+from uav_dt.mission.survey import footprint, lawnmower
 
 
 def test_footprint_at_40m():
-    w, l = footprint(CameraModel.dji_mini4pro_still(), 40.0)
-    assert 55 < w < 57 and 41 < l < 43
+    width, length = footprint(CameraModel.dji_mini4pro_still(), 40.0)
+    assert 55 < width < 57 and 41 < length < 43
 
 
 def test_lawnmower_sized_field_gives_a_symmetric_sweep():
@@ -16,7 +18,8 @@ def test_lawnmower_sized_field_gives_a_symmetric_sweep():
     swath, along = footprint(cam, 40.0)
     fh = swath + 0.9 * swath                                   # two passes at 10% overlap fit exactly
     wps = lawnmower(120, fh, cam, 40.0)
-    xs = sorted({wp[0] for wp in wps}); ys = sorted({wp[1] for wp in wps})
+    xs = sorted({wp[0] for wp in wps})
+    ys = sorted({wp[1] for wp in wps})
     assert xs[0] == pytest.approx(-60 + along / 2) and xs[-1] == pytest.approx(60 - along / 2)
     assert len(ys) == 2 and ys[0] == pytest.approx(-ys[1]) and ys[1] - ys[0] == pytest.approx(0.9 * swath)
     assert ys[0] - swath / 2 == pytest.approx(-fh / 2) and ys[1] + swath / 2 == pytest.approx(fh / 2)

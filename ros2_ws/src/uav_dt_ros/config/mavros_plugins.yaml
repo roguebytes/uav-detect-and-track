@@ -1,3 +1,4 @@
+# Author: Frank Loewenich
 # Keep MAVROS light: only the plugins the mission controller uses.
 /**:
   ros__parameters:

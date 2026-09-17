@@ -1,3 +1,6 @@
+"""ament_python packaging for uav_dt_ros: nodes, launch files and configuration."""
+
+__author__ = "Frank Loewenich"
 import os
 from glob import glob
 

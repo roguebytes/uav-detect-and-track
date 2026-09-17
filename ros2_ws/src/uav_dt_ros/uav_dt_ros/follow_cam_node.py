@@ -9,7 +9,10 @@ ros_gz service bridge on this Humble build never answers, and the gz CLI costs 0
 Because the camera does not roll or pitch with the airframe, altitude changes and the descent to
 the verify altitude read clearly in the footage.
 """
+
 from __future__ import annotations
+
+__author__ = "Frank Loewenich"
 
 import math
 import os
@@ -22,7 +25,9 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy
 
 
 class FollowCamNode(Node):
+    """Keep the follow camera model behind and above the UAV with a level attitude."""
     def __init__(self):
+        """Declare parameters, start the pose client and subscribe to the UAV odometry."""
         super().__init__("follow_cam")
         self.declare_parameters("", [("world", "bowl_field_sparse"), ("entity", "follow_cam"), ("odom_topic", "/uav/gz_odom"),
                                      ("distance", 7.0), ("height", 3.0), ("pitch_deg", 20.0), ("rate_hz", 50.0),
@@ -42,9 +47,11 @@ class FollowCamNode(Node):
         self.get_logger().info(f"following UAV with '{self.entity}' at {self.d} m back, {self.h} m up")
 
     def on_odom(self, msg):
+        """Store the latest UAV odometry."""
         self.odom = msg
 
     def tick(self):
+        """Move the camera to its filtered position behind the UAV."""
         if self.odom is None or self.client.poll() is not None:
             return
         p, q = self.odom.pose.pose.position, self.odom.pose.pose.orientation
@@ -71,6 +78,7 @@ class FollowCamNode(Node):
             self.get_logger().error("gz_set_pose client exited")
 
     def destroy_node(self):
+        """Close the pose client before the node is destroyed."""
         try:
             self.client.stdin.close()
             self.client.wait(timeout=2)
@@ -80,6 +88,7 @@ class FollowCamNode(Node):
 
 
 def main():
+    """Run the node until interrupted."""
     rclpy.init()
     node = FollowCamNode()
     try:

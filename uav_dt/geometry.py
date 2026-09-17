@@ -1,5 +1,8 @@
 """Geometry helpers: IoU, greedy IoU matching, target offset. Numpy only."""
+
 from __future__ import annotations
+
+__author__ = "Frank Loewenich"
 
 import numpy as np
 
@@ -40,6 +43,7 @@ def greedy_match(iou: np.ndarray, thresh: float):
 
 
 def box_area(box) -> float:
+    """Area of an xyxy box, zero for degenerate boxes."""
     return float(max(0.0, box[2] - box[0]) * max(0.0, box[3] - box[1]))
 
 

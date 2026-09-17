@@ -8,11 +8,14 @@ base is 2*L*tan(hfov/2) across-track (y) by 2*L*tan(vfov/2) along-track (x). Lon
 below the ground, whose opaque surface hides the buried part, so the visible frustum ends at the
 true footprint at any altitude.
 """
+
+__author__ = "Frank Loewenich"
 import argparse
 import math
 
 
 def main():
+    """Parse the command line and write the frustum mesh."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="sim/models/x500_visual/frustum.obj")
     ap.add_argument("--length", type=float, default=60.0)

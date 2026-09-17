@@ -10,6 +10,8 @@ count. Smooth motion gives an index well under 0.5; dropped or repeated frames a
 zero steps and score near or above 1. Short duplicate runs (1 to 3 frames) are counted separately:
 they are dropped renders, while long runs are genuine stillness such as a hover.
 """
+
+__author__ = "Frank Loewenich"
 import argparse
 
 import cv2
@@ -17,6 +19,7 @@ import numpy as np
 
 
 def main():
+    """Parse the command line and print the judder statistics of a clip."""
     ap = argparse.ArgumentParser()
     ap.add_argument("clip")
     ap.add_argument("--max-frames", type=int, default=1800)

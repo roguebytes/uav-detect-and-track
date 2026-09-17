@@ -6,7 +6,10 @@ IoU only — no deep features, no Kalman filter. Dependency-free (numpy). For
 production accuracy, swap in the reference ByteTrack / OC-SORT or Ultralytics'
 built-in tracker behind the same interface.
 """
+
 from __future__ import annotations
+
+__author__ = "Frank Loewenich"
 
 import numpy as np
 
@@ -14,9 +17,11 @@ from .geometry import greedy_match, iou_matrix
 
 
 class Track:
+    """An image-space track: box, score, class and lifecycle counters."""
     __slots__ = ("id", "box", "score", "cls", "age", "hits", "state")
 
     def __init__(self, tid, box, score, cls):
+        """Store the thresholds and lifecycle limits."""
         self.id = tid
         self.box = np.asarray(box, dtype=np.float32)
         self.score = float(score)
@@ -27,8 +32,11 @@ class Track:
 
 
 class ByteTrackLite:
+    """Two-stage IoU association with a track lifecycle, in numpy."""
+
     def __init__(self, track_thresh=0.5, low_thresh=0.1, match_thresh=0.3,
                  max_age=30, min_hits=3):
+        """Store the thresholds and lifecycle limits."""
         self.track_thresh = track_thresh
         self.low_thresh = low_thresh
         self.match_thresh = match_thresh
@@ -38,8 +46,11 @@ class ByteTrackLite:
         self.tracks: list[Track] = []
 
     def update(self, detections, frame_hw=None):
-        """detections: (N,6) array [x1,y1,x2,y2,score,cls]. Returns confirmed,
-        currently-visible tracks as list of (id, box, score, cls)."""
+        """Associate one frame of detections and return the confirmed, visible tracks.
+
+        detections: (N, 6) array [x1, y1, x2, y2, score, cls]. Returns a list of
+        (id, box, score, cls).
+        """
         dets = np.asarray(detections, dtype=np.float32).reshape(-1, 6) \
             if len(detections) else np.zeros((0, 6), dtype=np.float32)
         high = dets[dets[:, 4] >= self.track_thresh]

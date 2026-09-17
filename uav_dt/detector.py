@@ -6,11 +6,14 @@ GroundTruthDetector  projects known bowl positions through the camera model usin
                    vehicle pose. Used by the CI smoke run so it needs no weights or GPU.
 StubDetector       scripted detections for the offline unit tests.
 """
+
 from __future__ import annotations
+
+__author__ = "Frank Loewenich"
 
 import numpy as np
 
-from .geometry import greedy_match, iou_matrix
+from .geometry import iou_matrix
 
 EMPTY = np.zeros((0, 6), dtype=np.float32)
 
@@ -57,10 +60,12 @@ class StubDetector:
     """Returns scripted detections per frame, for offline tests without a model."""
 
     def __init__(self, frames_dets):
+        """Store the scripted detections, one array per frame."""
         self._frames = [np.asarray(d, dtype=np.float32).reshape(-1, 6) for d in frames_dets]
         self._i = 0
 
     def detect(self, frame=None) -> np.ndarray:
+        """Return the next frame's scripted detections, or none once the script is exhausted."""
         det = self._frames[self._i] if self._i < len(self._frames) else EMPTY
         self._i += 1
         return det
@@ -75,6 +80,7 @@ class TiledYoloDetector:
     def __init__(self, weights: str, conf: float = 0.25, tile: int = 640, overlap: float = 0.2,
                  imgsz: int = 640, device=None, half: bool = False, edge_margin: int = 4,
                  nms_iou: float = 0.5, batch: int = 16):
+        """Load the weights and store the tiling and inference settings."""
         from ultralytics import YOLO
         self.model = YOLO(weights)
         self.conf, self.tile, self.overlap, self.imgsz = conf, tile, overlap, imgsz
@@ -82,6 +88,7 @@ class TiledYoloDetector:
         self.last_tile_count = 0
 
     def detect(self, frame) -> np.ndarray:
+        """Detect on overlapping tiles, merge with NMS and drop boxes touching the frame edge."""
         h, w = frame.shape[:2]
         if h <= self.tile and w <= self.tile:
             grid = [(0, 0)]
@@ -118,6 +125,7 @@ class GroundTruthDetector:
     def __init__(self, camera, bowls_xy, ground_z: float = 0.0, bowl_diameter_m: float = 0.16,
                  pixel_noise: float = 1.0, miss_rate: float = 0.0, false_positives: int = 0,
                  score: float = 0.9, seed: int = 0, edge_margin: int = 4):
+        """Store the camera model, the bowl positions and the noise settings."""
         from .geolocate import project
         self._project = project
         self.cam, self.bowls, self.ground_z = camera, [tuple(b) for b in bowls_xy], ground_z
@@ -127,9 +135,11 @@ class GroundTruthDetector:
         self.position, self.orientation = None, None
 
     def set_pose(self, position, orientation_xyzw) -> None:
+        """Set the vehicle pose used to project the bowls for the next frame."""
         self.position, self.orientation = position, orientation_xyzw
 
     def detect(self, frame=None) -> np.ndarray:
+        """Project the visible bowls into the frame with noise, dropouts and false positives."""
         if self.position is None:
             return EMPTY
         h, w = (frame.shape[:2] if frame is not None else (self.cam.height, self.cam.width))

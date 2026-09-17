@@ -1,3 +1,5 @@
+__author__ = "Frank Loewenich"
+
 import math
 
 import numpy as np
@@ -8,7 +10,8 @@ from uav_dt.geolocate import CameraModel
 
 def test_tile_grid_covers_frame_with_overlap():
     grid = tile_origins(3024, 4032, 640, 0.2)
-    ys = sorted({y for y, _ in grid}); xs = sorted({x for _, x in grid})
+    ys = sorted({y for y, _ in grid})
+    xs = sorted({x for _, x in grid})
     assert ys[0] == 0 and xs[0] == 0
     assert ys[-1] + 640 == 3024 and xs[-1] + 640 == 4032
     assert all(b - a <= 512 for a, b in zip(ys, ys[1:]))

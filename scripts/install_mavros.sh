@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Author: Frank Loewenich
 # Install MAVROS 2 for ROS 2 Humble on Ubuntu 22.04. Run with sudo.
 #
 # Why a snapshot: the MAVROS 2.15.1 binary build failed on the ROS build farm in September 2026

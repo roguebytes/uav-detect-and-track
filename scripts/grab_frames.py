@@ -5,6 +5,8 @@
 
 Needs the system ROS 2 Python (rclpy, cv_bridge), not the venv.
 """
+
+__author__ = "Frank Loewenich"
 import argparse
 import os
 import sys
@@ -18,13 +20,16 @@ from sensor_msgs.msg import Image
 
 
 class Grabber(Node):
+    """Save a fixed number of frames from an image topic, then exit."""
     def __init__(self, topic, count, out_dir):
+        """Subscribe to the image topic."""
         super().__init__("grab_frames")
         self.bridge, self.count, self.out_dir, self.n = CvBridge(), count, out_dir, 0
         qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
         self.create_subscription(Image, topic, self.cb, qos)
 
     def cb(self, msg):
+        """Write the frame to disk and stop once enough frames have been saved."""
         frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
         path = os.path.join(self.out_dir, f"frame_{self.n:04d}.png")
         cv2.imwrite(path, frame)
@@ -35,6 +40,7 @@ class Grabber(Node):
 
 
 def main():
+    """Parse the command line and run the grabber."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--topic", default="/uav/camera")
     ap.add_argument("--count", type=int, default=1)

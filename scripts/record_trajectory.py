@@ -5,6 +5,8 @@
 
 Columns: t x y z qx qy qz qw (sim seconds, world ENU metres, body orientation).
 """
+
+__author__ = "Frank Loewenich"
 import argparse
 import os
 
@@ -15,7 +17,9 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy
 
 
 class TrajectoryLogger(Node):
+    """Append every odometry sample to a CSV file."""
     def __init__(self, topic, out):
+        """Open the output file and subscribe to the odometry topic."""
         super().__init__("record_trajectory")
         os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
         self.f = open(out, "w")
@@ -25,6 +29,7 @@ class TrajectoryLogger(Node):
         self.get_logger().info(f"logging {topic} to {out}")
 
     def cb(self, m):
+        """Write one odometry sample."""
         p, q = m.pose.pose.position, m.pose.pose.orientation
         t = m.header.stamp.sec + m.header.stamp.nanosec * 1e-9
         self.f.write(f"{t:.3f} {p.x:.4f} {p.y:.4f} {p.z:.4f} {q.x:.6f} {q.y:.6f} {q.z:.6f} {q.w:.6f}\n")
@@ -34,6 +39,7 @@ class TrajectoryLogger(Node):
 
 
 def main():
+    """Parse the command line and run the logger until interrupted."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--topic", default="/uav/gz_odom")
     ap.add_argument("--out", required=True)

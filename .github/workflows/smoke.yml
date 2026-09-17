@@ -34,6 +34,8 @@ jobs:
           tags: uav-dt-smoke:ci
           cache-from: type=registry,ref=ghcr.io/${{ github.repository }}/smoke-cache
           cache-to: type=registry,ref=ghcr.io/${{ github.repository }}/smoke-cache,mode=max
+      - name: Style and docstring check
+        run: docker run --rm uav-dt-smoke:ci bash -lc "source scripts/env.sh && pip install -q ruff && ruff check ."
       - name: Unit tests and offline smoke
         run: docker run --rm uav-dt-smoke:ci bash -lc "source scripts/env.sh && python -m pytest && python smoke_test.py"
       - name: Headless sim smoke run

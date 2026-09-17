@@ -1,0 +1,13 @@
+# Style gate for the Python sources: PEP 8 via pycodestyle/pyflakes and PEP 257 docstrings via pydocstyle.
+line-length = 120
+target-version = "py310"
+
+[lint]
+select = ["E", "F", "W", "D"]
+ignore = ["D203", "D212", "D213", "D413", "E501"]
+
+[lint.pydocstyle]
+convention = "google"
+
+[lint.per-file-ignores]
+"tests/*" = ["D100", "D103"]

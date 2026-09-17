@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Author: Frank Loewenich -->
 <sdf version='1.9'>
   <!-- The PX4 x500 airframe meshes with no motors, sensors or physics: a prop that scripts/replay_follow.py
        moves along a logged trajectory so the follow camera can be re-rendered smoothly after a mission.

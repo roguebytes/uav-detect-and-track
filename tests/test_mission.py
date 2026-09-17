@@ -1,3 +1,5 @@
+__author__ = "Frank Loewenich"
+
 import math
 
 from uav_dt.mission.state_machine import State, SurveyVerifyMission
@@ -8,16 +10,44 @@ class FakeController:
     """Teleports to the target on the next tick; tracks calls."""
 
     def __init__(self):
+        """Start on the ground, disarmed, with no target."""
         self.pos, self.tgt, self._armed, self.calls = (0.0, 0.0, 0.0), None, False, []
 
-    def connected(self): return True
-    def position(self): return self.pos
-    def armed(self): return self._armed
-    def target(self): return self.tgt
-    def takeoff(self, alt): self._armed = True; self.tgt = (self.pos[0], self.pos[1], alt); self.calls.append(("takeoff", alt))
-    def goto(self, x, y, z, yaw=None): self.tgt = (x, y, z); self.calls.append(("goto", x, y, z))
-    def land(self): self._armed = False; self.tgt = None; self.calls.append(("land",))
+    def connected(self):
+        """Always connected."""
+        return True
+
+    def position(self):
+        """Current position."""
+        return self.pos
+
+    def armed(self):
+        """Armed flag."""
+        return self._armed
+
+    def target(self):
+        """Current target."""
+        return self.tgt
+
+    def takeoff(self, alt):
+        """Arm and set the target above the current position."""
+        self._armed = True
+        self.tgt = (self.pos[0], self.pos[1], alt)
+        self.calls.append(("takeoff", alt))
+
+    def goto(self, x, y, z, yaw=None):
+        """Set the target."""
+        self.tgt = (x, y, z)
+        self.calls.append(("goto", x, y, z))
+
+    def land(self):
+        """Disarm and clear the target."""
+        self._armed = False
+        self.tgt = None
+        self.calls.append(("land",))
+
     def reached(self, tol=1.0):
+        """Teleport to the target and report it reached."""
         if self.tgt is not None:
             self.pos = self.tgt   # teleport
         return True
@@ -71,11 +101,14 @@ def test_dwell_waits_for_frames_then_gives_up():
     tracks = [(1, 5.0, 1.0)]
     t = 0.0
     while m.state is not State.VERIFY or m.dwell_until is None:
-        m.tick(t, tracks, ()); t += 0.5
+        m.tick(t, tracks, ())
+        t += 0.5
     start = t
     while m.dwell_until is not None and t < start + 4.0:      # no frames arrive: the 1 s timer alone must not end the dwell
-        m.tick(t, tracks, None); t += 0.5
+        m.tick(t, tracks, None)
+        t += 0.5
     assert m.dwell_until is not None
     while m.dwell_until is not None:                          # ... but the deadline does
-        m.tick(t, tracks, None); t += 0.5
+        m.tick(t, tracks, None)
+        t += 0.5
     assert m.verdicts == {1: False} and t - start <= 6.5

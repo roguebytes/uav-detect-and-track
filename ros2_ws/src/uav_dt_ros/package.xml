@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<!-- Author: Frank Loewenich -->
 <package format="3">
   <name>uav_dt_ros</name>
   <version>0.2.0</version>

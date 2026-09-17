@@ -1,5 +1,8 @@
 """Lawnmower survey planning from the camera footprint."""
+
 from __future__ import annotations
+
+__author__ = "Frank Loewenich"
 
 import math
 
@@ -10,7 +13,8 @@ def footprint(cam: CameraModel, altitude: float) -> tuple[float, float]:
     """Ground footprint (across-track width, along-track length) in metres at nadir.
 
     Image right is the body's left, so image width maps across-track when the body flies
-    along its x axis."""
+    along its x axis.
+    """
     width = 2 * altitude * math.tan(cam.hfov / 2)
     length = 2 * altitude * (cam.cy / cam.fy)
     return width, length
@@ -35,7 +39,8 @@ def lawnmower(field_w: float, field_h: float, cam: CameraModel, altitude: float,
     footprints touch the two sides exactly, and spreads the passes between evenly.
 
     Legs run east-west (along x), yaw along each leg so the camera's along-track axis matches the
-    body's. `margin` widens the field before planning."""
+    body's. `margin` widens the field before planning.
+    """
     swath, along = footprint(cam, altitude)
     x0, x1 = centre[0] - field_w / 2 - margin, centre[0] + field_w / 2 + margin
     y0, y1 = centre[1] - field_h / 2 - margin, centre[1] + field_h / 2 + margin
@@ -62,4 +67,5 @@ def lawnmower(field_w: float, field_h: float, cam: CameraModel, altitude: float,
 
 
 def path_length(wps) -> float:
+    """Total horizontal length of a waypoint list in metres."""
     return sum(math.dist(a[:2], b[:2]) for a, b in zip(wps, wps[1:]))

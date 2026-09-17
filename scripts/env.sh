@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Author: Frank Loewenich
 # Source this before launching anything: `source scripts/env.sh`
 # Sets up ROS 2 Humble, the Garden build of ros_gz, PX4 and this repo's Gazebo assets.
 # Pinned versions are listed in docs/setup.md.

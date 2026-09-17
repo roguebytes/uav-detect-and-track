@@ -5,6 +5,8 @@
 
 Logs go to runs/<run_name>/perception.jsonl and mission.jsonl for scripts/score.py.
 """
+
+__author__ = "Frank Loewenich"
 import os
 import time
 
@@ -14,6 +16,7 @@ from launch_ros.actions import Node
 
 
 def setup(context, *a, **k):
+    """Build the perception, mission and optional recorder actions from the launch arguments."""
     L = lambda n: context.launch_configurations[n]  # noqa: E731
     root = os.environ.get("UAV_DT_REPO") or os.path.abspath(os.path.join(os.path.dirname(__file__), *([".."] * 5)))
     run_dir = os.path.join(root, "runs", L("run_name") or time.strftime("%Y%m%d_%H%M%S"))
@@ -64,6 +67,7 @@ def setup(context, *a, **k):
 
 
 def generate_launch_description():
+    """Declare the launch arguments and defer to `setup` for the actions."""
     return LaunchDescription([
         DeclareLaunchArgument("world", default_value="bowl_field_sparse"),
         DeclareLaunchArgument("model", default_value="x500_nadir_cam"),

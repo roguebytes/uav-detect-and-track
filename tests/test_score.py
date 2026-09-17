@@ -1,4 +1,8 @@
-import json, math, os, sys
+__author__ = "Frank Loewenich"
+
+import math
+import os
+import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 import score  # noqa: E402
 

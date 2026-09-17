@@ -1,9 +1,12 @@
 """Run detect-and-track on a video file or camera; write annotated video + tracks.jsonl.
 
-    python detect_track.py --source clip.mp4 --model yolo11n.pt --classes 0 2 \
+python detect_track.py --source clip.mp4 --model yolo11n.pt --classes 0 2 \
         --output out.mp4 --tracks tracks.jsonl
 """
+
 from __future__ import annotations
+
+__author__ = "Frank Loewenich"
 
 import argparse
 import json
@@ -13,6 +16,7 @@ from uav_dt.pipeline import Pipeline
 
 
 def parse_args():
+    """Parse the command line."""
     p = argparse.ArgumentParser(description="UAV detect-and-track")
     p.add_argument("--source", required=True, help="Video path, or webcam index (e.g. 0)")
     p.add_argument("--model", default="yolo11n.pt")
@@ -26,6 +30,7 @@ def parse_args():
 
 
 def draw(frame, result):
+    """Draw track boxes, the image centre and the selected target's offset on a frame."""
     import cv2
     h, w = frame.shape[:2]
     for t in result["tracks"]:
@@ -46,6 +51,7 @@ def draw(frame, result):
 
 
 def main():
+    """Run detection and tracking over a video or camera and write the outputs."""
     import cv2
     args = parse_args()
     policy = int(args.target_policy) if args.target_policy.lstrip("-").isdigit() else args.target_policy

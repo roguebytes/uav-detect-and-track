@@ -16,6 +16,8 @@ waits for the camera to write that frame's PNG. Frame k therefore shows exactly 
 uav_dt.video.camera_track, which tools/annotate_follow.py uses to overlay geometry. Wall time is
 whatever the renderer needs; the video plays at true speed.
 """
+
+__author__ = "Frank Loewenich"
 import argparse
 import math
 import os
@@ -33,6 +35,7 @@ from uav_dt.video import camera_track  # noqa: E402
 
 
 def main():
+    """Render the follow camera along a logged trajectory in lockstep and assemble the video."""
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--run", required=True)
     ap.add_argument("--world", required=True)

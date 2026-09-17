@@ -3,7 +3,10 @@
 Both must agree exactly, so the pose sequence is computed here from the trajectory and the camera
 parameters, stepping at pose_hz as the replay does and sampling at the video frame times.
 """
+
 from __future__ import annotations
+
+__author__ = "Frank Loewenich"
 
 import math
 
@@ -11,6 +14,7 @@ import numpy as np
 
 
 def quat_yaw(qx, qy, qz, qw) -> float:
+    """Yaw angle of an (x, y, z, w) quaternion."""
     return math.atan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy * qy + qz * qz))
 
 
@@ -34,7 +38,8 @@ def camera_track(traj, start, end, fps, pose_hz=None, distance=7.0, height=3.0, 
     """Per video frame: (frame time, quad position, quad quaternion, camera position, camera quaternion).
 
     Mirrors scripts/replay_follow.py: the yaw filter runs at pose_hz from the start pose, and each
-    video frame uses the most recent pose tick at or before its own time."""
+    video frame uses the most recent pose tick at or before its own time.
+    """
     pose_hz = pose_hz or fps
     t = traj[:, 0] - traj[0, 0]
     pitch = math.radians(pitch_deg)

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Author: Frank Loewenich
 # Build the small native helpers under tools/ into build/ (needs the Gazebo Garden dev packages).
 set -e
 cd "$(dirname "$0")/.."

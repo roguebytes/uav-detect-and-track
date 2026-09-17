@@ -8,6 +8,8 @@ real time, earlier frames are repeated so the video still plays at sim speed. Fr
 ffmpeg as fragmented MP4 (H.264), so the file stays playable even if the process is killed before
 it can close cleanly. Needs the system ROS 2 Python (rclpy, cv_bridge) and ffmpeg.
 """
+
+__author__ = "Frank Loewenich"
 import argparse
 import os
 import shutil
@@ -23,7 +25,9 @@ from sensor_msgs.msg import Image
 
 
 class Recorder(Node):
+    """Encode one or more image topics to MP4 files through ffmpeg."""
     def __init__(self, topics, out_dir, fps, max_width):
+        """Subscribe to the topics and check which encoders ffmpeg offers."""
         super().__init__("record_video")
         self.bridge, self.fps, self.max_width, self.out_dir = CvBridge(), fps, max_width, out_dir
         self.writers, self.last_t, self.counts = {}, {}, {}
@@ -39,6 +43,7 @@ class Recorder(Node):
         self.get_logger().info(f"recording {topics} to {out_dir} at {fps} fps")
 
     def on_image(self, topic, msg):
+        """Feed a frame to the topic's encoder, repeating it to keep the timestamp pacing."""
         frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
         if self.max_width and frame.shape[1] > self.max_width:
             s = self.max_width / frame.shape[1]
@@ -76,6 +81,7 @@ class Recorder(Node):
         return subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def close(self):
+        """Flush and close every encoder."""
         for topic, p in self.writers.items():
             try:
                 p.stdin.close()
@@ -86,6 +92,7 @@ class Recorder(Node):
 
 
 def main():
+    """Parse the command line and record until interrupted."""
     ap = argparse.ArgumentParser()
     ap.add_argument("topics", nargs="+")
     ap.add_argument("--out-dir", default=".")

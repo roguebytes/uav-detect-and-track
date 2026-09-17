@@ -1,3 +1,5 @@
+__author__ = "Frank Loewenich"
+
 import math
 
 import numpy as np

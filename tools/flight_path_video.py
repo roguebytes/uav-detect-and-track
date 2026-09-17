@@ -11,6 +11,8 @@ point to the field corner is transit), and the verification pass is orange from 
 descent (the 40 m transit to the first candidate is transit). Rendered with OpenCV and encoded
 with ffmpeg.
 """
+
+__author__ = "Frank Loewenich"
 import argparse
 import json
 import math
@@ -30,6 +32,7 @@ BG, GRASS, TEXT = (24, 24, 24), (46, 78, 40), (235, 235, 235)
 
 
 def main():
+    """Parse the command line and render the flight-path animation."""
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--run", required=True)
     ap.add_argument("--world", required=True)
@@ -46,7 +49,7 @@ def main():
 
     traj = np.loadtxt(os.path.join(a.run, "trajectory.csv"), skiprows=1)
     t, xyz = traj[:, 0] - traj[0, 0], traj[:, 1:4]
-    mission = [json.loads(l) for l in open(os.path.join(a.run, "mission.jsonl"))]
+    mission = [json.loads(length) for length in open(os.path.join(a.run, "mission.jsonl"))]
     t0 = traj[0, 0]
     states = sorted((r["t"] - t0, r["state"]) for r in mission)
     manifest = json.load(open(os.path.join("sim", "worlds", a.world + ".json")))
@@ -115,7 +118,8 @@ def main():
     # legend inside the field, in whichever corner the flight path and targets leave clear
     legend = [("survey at 40 m", COL["survey"]), ("verification pass at 11 m", COL["verify"]), ("transit / return", COL["other"])]
     lw, lh = 300, 24 * len(legend) + 36
-    fx0, fy0 = to_px(-fw / 2, fh / 2); fx1, fy1 = to_px(fw / 2, -fh / 2)
+    fx0, fy0 = to_px(-fw / 2, fh / 2)
+    fx1, fy1 = to_px(fw / 2, -fh / 2)
     pad = 14
     corners = [(fx0 + pad, fy0 + pad), (fx1 - pad - lw, fy0 + pad), (fx0 + pad, fy1 - pad - lh), (fx1 - pad - lw, fy1 - pad - lh)]
     pts = [to_px(x, y) for x, y in xyz[::5, :2]] + [to_px(bx, by) for bx, by in bowls]
