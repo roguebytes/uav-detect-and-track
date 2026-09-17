@@ -113,6 +113,11 @@ python3 scripts/score.py runs/sparse/perception.jsonl sim/worlds/bowl_field_spar
 
 Python, numpy, PyTorch, Ultralytics, ROS 2 Humble, Gazebo Garden, PX4 SITL 1.15.4, MAVROS 2.14, ffmpeg.
 
+## See also
+
+- [roguebytes/uav-survey-strategy-simulation](https://github.com/roguebytes/uav-survey-strategy-simulation): the Monte Carlo model and the decision table behind the paper.
+- [roguebytes/uav-survey-strategy-dataset](https://github.com/roguebytes/uav-survey-strategy-dataset): the field imagery, annotations, detector weights and predictions at 11, 15 and 40 m.
+
 ## Reference
 
 Loewenich, F., Maire, F., Sandino, J., & Gonzalez, F. (2026). Fly High or Fly Low? Selecting
