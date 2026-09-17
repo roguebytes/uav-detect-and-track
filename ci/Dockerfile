@@ -15,10 +15,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && apt-get update && apt-get install -y --no-install-recommends gz-garden libgz-sim7-dev \
  && rm -rf /var/lib/apt/lists/*
 
-# ros_gz for Garden
+# ros_gz for Garden, pinned to the humble-branch commit used on the development machine. The demos
+# package is dropped and rosdep pulls the remaining ROS dependencies (gflags, rclcpp_components,
+# actuator_msgs, yaml_cpp_vendor and friends); the Gazebo libraries themselves come from the step above.
 RUN mkdir -p /ws/src && git clone -q -b humble https://github.com/gazebosim/ros_gz.git /ws/src/ros_gz \
- && bash -c "source /opt/ros/humble/setup.bash && cd /ws && GZ_VERSION=garden colcon build --merge-install --cmake-args -DBUILD_TESTING=OFF" \
- && rm -rf /ws/build /ws/log
+ && git -C /ws/src/ros_gz checkout -q c9a5a73 && rm -rf /ws/src/ros_gz/ros_gz_sim_demos \
+ && apt-get update && rosdep update --rosdistro humble \
+ && GZ_VERSION=garden rosdep install --from-paths /ws/src --ignore-src -y --rosdistro humble \
+      --skip-keys "gz-sim7 gz-math7 gz-msgs9 gz-transport12" \
+ && bash -c "source /opt/ros/humble/setup.bash && cd /ws && GZ_VERSION=garden colcon build --merge-install --parallel-workers 2 --cmake-args -DBUILD_TESTING=OFF" \
+ && rm -rf /ws/build /ws/log /var/lib/apt/lists/*
 
 # PX4 SITL
 RUN git clone -q --recursive -b ${PX4_TAG} https://github.com/PX4/PX4-Autopilot.git /px4 \
