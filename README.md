@@ -30,8 +30,8 @@ What this repository shows is that the profile works as a flying system:
   places them to within a few tens of centimetres.
 - The verification pass does its job: on the dense field it rejected the one false track the
   survey had raised.
-- The mission time is compared against the paper's baseline, a constant survey of the whole field
-  at 11 m, flown on the same worlds with the same planner and speed limits.
+- The mission can also fly the paper's baseline, a constant survey of the whole field at 11 m
+  (`VERIFY=false SURVEY_ALT=11`), for cost comparisons.
 - Everything runs from a clean checkout, including a headless CI run.
 
 Each result below is a single flight, on rendered grass, with simulated sensors. It is a
@@ -47,11 +47,13 @@ paper's claim.
 | Verified true / rejected | 12 / 0 | 58 / 1 |
 | Verified recall / precision | 1.00 / 1.00 | 0.97 / 1.00 |
 | Geolocation error, mean / max (m) | 0.21 / 0.35 | 0.20 / 0.41 |
-| Mission time, takeoff to landing (s) | 248 | 617 |
-| Frames processed / inference per frame (s) | 248 / 0.63 | 617 / 0.65 |
+| Survey leg / verification pass (s) | 58 / 160 | 58 / 530 |
+| Mission time, takeoff to landing (s) | 251 | 620 |
 
 One mission per world, flown on 2026-09-17, so the recall figures are single-flight outcomes rather
-than statistics.
+than statistics. The verification pass dominates the mission time: each hop carries a transit at
+5 m/s, a settle and a dwell of at least three camera frames, about 13 s per candidate.
+
 Field 120 x 106.4 m, sized so that two survey passes at 40 m with 10% side overlap cover it exactly
 (56 m swath, 50.4 m spacing), following the sweep model of the paper's section 3.2.4: a pass spans
 only the centres of its first and last footprints, so the aircraft turns when the footprint reaches
@@ -113,6 +115,7 @@ scripts/smoke.sh                       # headless, oracle detector, about 4 minu
 # real detector (weights in models/, see models/README.md), MAVROS pose, recording:
 DETECTOR=yolo POSE=mavros RECORD=true MAX_VERIFY=0 MIN_RECALL=0 RUN_NAME=sparse scripts/smoke.sh
 # CAMERA_HZ=0.5 halves the render and inference load. FRAME_STRIDE=2 skips every second survey frame
+# VERIFY=false SURVEY_ALT=11 flies the constant 11 m survey baseline
 python3 scripts/score.py runs/sparse/perception.jsonl sim/worlds/bowl_field_sparse.json
 ```
 
