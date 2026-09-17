@@ -1,14 +1,10 @@
 name: headless smoke run
 
-# The image build takes about 40 minutes (PX4 and ros_gz from source), so it is cached in GHCR and
-# only rebuilt when the toolchain inputs change. The smoke run itself takes a few minutes on the
-# CPU renderer with the lite camera and the oracle detector, no weights needed.
+# Started by hand from the Actions tab (workflow_dispatch) rather than on every push, to keep the
+# Actions minutes down: the image build takes about 20 minutes when the GHCR layer cache misses
+# (PX4 and ros_gz from source) and the smoke run itself a few minutes on the CPU renderer with the
+# lite camera and the oracle detector, no weights needed. Last green run: 2026-09-17.
 on:
-  push:
-    branches: [main]
-  pull_request:
-  schedule:
-    - cron: "0 3 * * 1"
   workflow_dispatch:
 
 jobs:
