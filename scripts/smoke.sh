@@ -55,6 +55,8 @@ cleanup() {
   [ -n "${LP:-}" ] && kill -INT "$LP" 2>/dev/null
   sleep 5
   kill_stack
+  for p in "${MP:-}" "${LP:-}"; do [ -n "$p" ] && kill -0 "$p" 2>/dev/null && kill -9 "$p" 2>/dev/null; done
+  return 0
 }
 
 # Kill every simulator and node process, escalating to SIGKILL: a headless gz server can ignore
