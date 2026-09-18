@@ -68,8 +68,11 @@ between candidates ordered nearest-neighbour (the paper uses a TSP solver). Grou
 world generator's manifest. A track counts as correct within 2 m of an unmatched target object on the survey
 and within 1 m at verification. Full tables: `docs/results/sparse.md`, `docs/results/dense.md`.
 
-Detector: YOLOv9-C fine-tuned on real DJI Mini 4 Pro frames of target objects on grass at 11, 15 and
-40 m (Loewenich et al. 2026), run on 640 px tiles at native resolution, FP16 on an RTX 2070.
+Detector: a YOLOv9-C trained from scratch on 640 px slices of the real DJI Mini 4 Pro imagery behind
+the paper (target objects on grass at 11, 15 and 40 m). It is a training candidate from the same
+project, not one of the two detectors characterised in the paper; the paper's released 40 m
+detector is in the original YOLOv9 repository format, which the Ultralytics runtime used here
+cannot load. Inference runs on 640 px tiles at native resolution, FP16 on an RTX 2070.
 Geolocation uses the autopilot's own position and attitude estimate through MAVROS, not the
 simulator's ground truth, so the errors above include estimator error. The simulated camera uses the
 Mini 4 Pro's 4:3 still format (4032 x 3024, 70 degree horizontal field of view); the paper's frames
@@ -143,8 +146,8 @@ python3 scripts/score.py runs/sparse/perception.jsonl sim/worlds/bowl_field_spar
 September 2026: the two-stage mission flies end to end on both demo worlds with the real detector,
 and the CI smoke run is green. Planned next: repeated flights per world so the results carry
 spreads rather than single values, a cost comparison against the constant 11 m survey baseline,
-the released 40 m detector weights as the supported model, and an ArduPilot adapter ahead of the
-fixed-wing variant.
+the paper's released 40 m detector as the supported model (it needs a YOLOv9-repository backend or
+an ONNX export), and an ArduPilot adapter ahead of the fixed-wing variant.
 
 ## Tech
 

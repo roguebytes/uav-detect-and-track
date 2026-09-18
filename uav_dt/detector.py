@@ -1,6 +1,6 @@
 """Detectors behind one interface: detect(frame_bgr) -> (N, 6) float32 [x1, y1, x2, y2, score, cls].
 
-TiledYoloDetector  the YOLOv9-C from the paper's imagery, run SAHI-style on 640 px tiles at native resolution.
+TiledYoloDetector  an Ultralytics YOLOv9-C trained on the paper's imagery, run SAHI-style on 640 px tiles.
                    Downscaling a 12 MP frame to 640 px finds nothing (tested 2026-09-14).
 GroundTruthDetector  projects known bowl positions through the camera model using the true
                    vehicle pose. Used by the CI smoke run so it needs no weights or GPU.
